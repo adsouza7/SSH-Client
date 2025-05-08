@@ -3,12 +3,16 @@
 
 int main() {
 
+    SSHClient client;
+
     try {
-        SSHClient client("aaron-tc");
+        client = SSHClient("aaron-tc");
     }
     catch (const std::exception& e) {
         std::cerr << "Construction failed: " << e.what() << "\n";
     }
+
+    client.serverConnect();
 
     return 0;
 }

@@ -6,6 +6,7 @@
 
 class SSHClient {
     public:
+        SSHClient() = default;
         SSHClient(const std::string& hostname); /* Initialize socket */
         ~SSHClient(); /* Close socket */
 
@@ -17,7 +18,7 @@ class SSHClient {
 
     private:
         int sockFD = 0;
-        std::string ServerIDString;
+        std::string serverIDString;
         
 };
 

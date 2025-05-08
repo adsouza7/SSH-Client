@@ -1,8 +1,10 @@
 #include <stdexcept>
 #include <SSHClient.h>
 #include <sys/socket.h>
+#include <sys/types.h>
 #include <netdb.h>
 #include <cstring>
+#include <vector>
 
 const std::string SERVER_PORT = "22";
 const std::string IDString = "SSH-2.0-AaronClient\r\n";
@@ -32,10 +34,23 @@ SSHClient::SSHClient(const std::string& hostname) {
         freeaddrinfo(serverAddr);
         throw std::runtime_error("Could not connect to server");
     }
+}
 
+int SSHClient::serverConnect() {
 
+    std::vector<char> buffer(32768);
+    int bytesRecv = 0;
 
+    send(sockFD, IDString.c_str(), IDString.size(), 0);
 
+    bytesRecv = recv(sockFD, buffer.data(), buffer.size(), 0);
+    if (bytesRecv > 0) {
+        serverIDString.assign(buffer.data(), bytesRecv);       
+    }
+
+    std::cout << "Server ID String: " << serverIDString << std::endl;
+
+    return 0;
 }
 
 SSHClient::~SSHClient(){
