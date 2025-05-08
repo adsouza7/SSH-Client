@@ -1,0 +1,61 @@
+/*
+    Author: Aaron DSouza
+*/
+
+MAIN DESIGN:
+The client will utilize a multithreaded design that allows for the workload to
+be split into distinct parts which will enhance the design's responsiveness and
+overall usability.
+
+The workload will be distributed among the following threads:
+    1) Terminal Thread: 
+        Will be responsible for displaying any data received by the client. This
+        will primarily be terminal output received from the server.
+
+	2) Input Thread: 
+        Will be responsible for taking in user input that needs to be sent to
+        the connected server.
+
+	3) Send Thread: 
+        Will be responsible for sending SSH packets to the connected server via
+        an established TCP connection. This thread will also be responsible for
+        encrypting data and formatting it into SSH packets.
+
+	4) Receive Thread: 
+        Will be responsible for receiving incoming packets from the connected 
+        server via an established TCP connection. This thread will also be
+        responsible for decrypting and parsing the received packet. 
+
+	5) Manager Thread: 
+        Will be responsible for coordinating and managing the communication 
+        between the individual threads. Data from the "Input Thread" will first
+        be sent to the "Manager Thread" before it is sent over the network by 
+        the "Send Thread". Similarly, When data is received by the
+        "Receive Thread", it will first be sent to the "Manager Thread" before
+        it is displayed by the "Terminal Thread".
+
+CLASSES:
+1) SSHClient
+    - connect()
+        Attempts connection to server
+
+    - startTerminal()
+        Opens a terminal session with the connected server
+
+    - sendPacket()
+        Formats, encrypts and sends ssh packet
+
+    - receivePacket()
+        Receives, decrypts and parses ssh packet
+
+    - disconnect()
+        Terminates connection and frees and resources
+
+2) SSHPacket
+    - SSHPacket(byteStream)
+        Constructs a packet from a byte stream
+    - SSHPacket(payload)
+        Construct a packet from a payload
+    - serialize()
+        Converts a packet into a byte array
+ 
