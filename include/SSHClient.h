@@ -3,14 +3,10 @@
 
 #include <iostream>
 #include <string>
-#include <string_view>
-
-const int SERVER_PORT = 22;
-const std::string IDString = "SSH-2.0-AaronClient\r\n";
 
 class SSHClient {
     public:
-        SSHClient(std::string_view hostname); /* Initialize socket */
+        SSHClient(const std::string& hostname); /* Initialize socket */
         ~SSHClient(); /* Close socket */
 
         int serverConnect();
