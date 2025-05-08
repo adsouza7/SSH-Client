@@ -1,6 +1,6 @@
 CXX = g++
 CPPFLAGS = -std=c++20 -Wall -Wextra -pedantic
-CXXFLAGS = -c -I./include/
+CXXFLAGS = -c -g -I./include/
 
 BUILD_DIR = build/
 BIN = ssh-client
