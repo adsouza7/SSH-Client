@@ -5,8 +5,8 @@
 #include <string>
 #include <string_view>
 
-constexpr int SERVER_PORT = 22;
-constexpr std::string IDString = "SSH-2.0-AaronClient\r\n"
+const int SERVER_PORT = 22;
+const std::string IDString = "SSH-2.0-AaronClient\r\n";
 
 class SSHClient {
     public:
