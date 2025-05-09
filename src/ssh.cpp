@@ -14,5 +14,7 @@ int main() {
 
     client.serverConnect();
 
+    while(1);
+
     return 0;
 }

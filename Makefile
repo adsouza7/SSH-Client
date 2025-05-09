@@ -15,8 +15,11 @@ clean:
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
-$(BIN): $(BUILD_DIR)SSHClient.o $(BUILD_DIR)ssh.o
+$(BIN): $(BUILD_DIR)SSHClient.o $(BUILD_DIR)SSHPacket.o $(BUILD_DIR)ssh.o
 	$(CXX) -o $(BIN) $^
+
+$(BUILD_DIR)SSHPacket.o: src/SSHPacket.cpp | $(BUILD_DIR)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) src/SSHPacket.cpp -o $@
 
 $(BUILD_DIR)ssh.o: src/ssh.cpp | $(BUILD_DIR)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) src/ssh.cpp -o $@

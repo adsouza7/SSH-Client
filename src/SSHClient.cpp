@@ -1,13 +1,27 @@
 #include <stdexcept>
 #include <SSHClient.h>
+#include <SSHPacket.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <netdb.h>
+#include <unistd.h>
 #include <cstring>
 #include <vector>
 
 const std::string SERVER_PORT = "22";
 const std::string IDString = "SSH-2.0-AaronClient\r\n";
+
+// Supported Algorithms
+const std::string kex_algos = "curve25519-sha256,diffie-hellman-group14-sha256";
+const std::string server_host_key_algos = "ssh-ed25519,rsa-sha2-256";
+const std::string encryption_ctos = "aes128-cbc,3des-cbc";
+const std::string encryption_stoc = "aes128-cbc,3des-cbc";
+const std::string mac_ctos = "hmac-sha1-96,hmac-sha1";
+const std::string mac_stoc = "hmac-sha1-96,hmac-sha1";
+const std::string compression_ctos = "none";
+const std::string compression_stoc = "none";
+const std::string langs_ctos = "";
+const std::string langs_stoc = "";
 
 SSHClient::SSHClient(const std::string& hostname) {
     std::cout << "Hostname: " << hostname << std::endl;
@@ -41,6 +55,7 @@ int SSHClient::serverConnect() {
     std::vector<char> buffer(32768);
     int bytesRecv = 0;
 
+    // ID String Exchange
     send(sockFD, IDString.c_str(), IDString.size(), 0);
 
     bytesRecv = recv(sockFD, buffer.data(), buffer.size(), 0);
@@ -48,7 +63,9 @@ int SSHClient::serverConnect() {
         serverIDString.assign(buffer.data(), bytesRecv);       
     }
 
-    std::cout << "Server ID String: " << serverIDString << std::endl;
+    std::vector<unsigned char> buf(32768);
+
+    SSHPacket::build_kexinit(buf);
 
     return 0;
 }

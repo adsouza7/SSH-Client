@@ -4,6 +4,17 @@
 #include <iostream>
 #include <string>
 
+extern const std::string kex_algos;
+extern const std::string server_host_key_algos;
+extern const std::string encryption_ctos;
+extern const std::string encryption_stoc;
+extern const std::string mac_ctos;
+extern const std::string mac_stoc;
+extern const std::string compression_ctos;
+extern const std::string compression_stoc;
+extern const std::string langs_ctos;
+extern const std::string langs_stoc;
+
 class SSHClient {
     public:
         SSHClient() = default;
