@@ -8,6 +8,9 @@
 #include <cstring>
 #include <vector>
 
+#include <iostream>
+#include <iomanip>
+
 const std::string SERVER_PORT = "22";
 const std::string IDString = "SSH-2.0-AaronClient\r\n";
 
@@ -22,6 +25,15 @@ const std::string compression_ctos = "none";
 const std::string compression_stoc = "none";
 const std::string langs_ctos = "";
 const std::string langs_stoc = "";
+
+void print_hex(const std::vector<uint8_t>& data) {
+    for (size_t i = 0; i < data.size(); ++i) {
+        if (i % 16 == 0) std::cout << std::setw(4) << std::setfill('0') << i << ": ";
+        std::cout << std::hex << std::setw(2) << std::setfill('0')
+                  << static_cast<int>(data[i]) << ' ';
+        if (i % 16 == 15 || i == data.size() - 1) std::cout << '\n';
+    }
+}
 
 SSHClient::SSHClient(const std::string& hostname) {
     std::cout << "Hostname: " << hostname << std::endl;
@@ -63,9 +75,13 @@ int SSHClient::serverConnect() {
         serverIDString.assign(buffer.data(), bytesRecv);       
     }
 
-    std::vector<unsigned char> buf(32768);
+    std::vector<unsigned char> buf;
 
-    SSHPacket::build_kexinit(buf);
+    int bytes = SSHPacket::build_kexinit(buf);
+    print_hex(buf);
+
+    // KEXINIT send
+    send(sockFD, buf.data(), bytes, 0);
 
     return 0;
 }
