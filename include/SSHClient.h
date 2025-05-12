@@ -30,6 +30,8 @@ class SSHClient {
     private:
         int sockFD = 0;
         std::string serverIDString;
+
+        void parse_kexinit(uint8_t* packet);
         
 };
 

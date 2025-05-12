@@ -4,9 +4,11 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <netdb.h>
+#include <arpa/inet.h>
 #include <unistd.h>
 #include <cstring>
 #include <vector>
+#include <unordered_set>
 
 #include <iostream>
 #include <iomanip>
@@ -17,22 +19,55 @@ const std::string IDString = "SSH-2.0-AaronClient\r\n";
 // Supported Algorithms
 const std::string kex_algos = "curve25519-sha256,diffie-hellman-group14-sha256";
 const std::string server_host_key_algos = "ssh-ed25519,rsa-sha2-256";
-const std::string encryption_ctos = "aes128-cbc,3des-cbc";
-const std::string encryption_stoc = "aes128-cbc,3des-cbc";
-const std::string mac_ctos = "hmac-sha1-96,hmac-sha1";
-const std::string mac_stoc = "hmac-sha1-96,hmac-sha1";
+const std::string encryption_ctos = "aes128-ctr,aes256-ctr";
+const std::string encryption_stoc = "aes128-ctr,aes256-ctr";
+const std::string mac_ctos = "hmac-sha2-256,hmac-sha1";
+const std::string mac_stoc = "hmac-sha2-256,hmac-sha1";
 const std::string compression_ctos = "none";
 const std::string compression_stoc = "none";
 const std::string langs_ctos = "";
 const std::string langs_stoc = "";
 
-void print_hex(const std::vector<uint8_t>& data) {
-    for (size_t i = 0; i < data.size(); ++i) {
+void print_hex(const std::vector<uint8_t>& data, size_t size) {
+    for (size_t i = 0; i < size; ++i) {
         if (i % 16 == 0) std::cout << std::setw(4) << std::setfill('0') << i << ": ";
         std::cout << std::hex << std::setw(2) << std::setfill('0')
                   << static_cast<int>(data[i]) << ' ';
         if (i % 16 == 15 || i == data.size() - 1) std::cout << '\n';
     }
+}
+
+std::string findFirstCommon(const std::string& client,
+    const std::string& server) {
+
+    std::unordered_set<std::string> serverSet;
+    size_t prev = 0;
+    size_t current = 0;
+
+    while (current != std::string::npos) {
+        current = server.find(',', prev);
+
+        serverSet.insert(server.substr(prev, current - prev));
+
+        prev = current + 1;
+    }
+
+    prev = 0;
+    current = 0;
+
+    while (current != std::string::npos) {
+        current = client.find(',', prev);
+
+        if (serverSet.count(client.substr(prev, current - prev))) {
+            return client.substr(prev, current - prev);
+        }
+
+        prev = current + 1;
+    }
+
+    return "";
+
+    
 }
 
 SSHClient::SSHClient(const std::string& hostname) {
@@ -64,7 +99,7 @@ SSHClient::SSHClient(const std::string& hostname) {
 
 int SSHClient::serverConnect() {
 
-    std::vector<char> buffer(32768);
+    std::vector<uint8_t> buffer(32768);
     int bytesRecv = 0;
 
     // ID String Exchange
@@ -72,19 +107,65 @@ int SSHClient::serverConnect() {
 
     bytesRecv = recv(sockFD, buffer.data(), buffer.size(), 0);
     if (bytesRecv > 0) {
-        serverIDString.assign(buffer.data(), bytesRecv);       
+        serverIDString.assign((char*)(buffer.data()), bytesRecv);       
     }
+    std::cout << serverIDString << std::endl;
 
+    /************** KEY EXCHANGE ******************/
     std::vector<unsigned char> buf;
 
     int bytes = SSHPacket::build_kexinit(buf);
-    print_hex(buf);
+    //print_hex(buf);
 
     // KEXINIT send
     send(sockFD, buf.data(), bytes, 0);
 
+    // Server KEXINIT recv
+    bytesRecv = recv(sockFD, buffer.data(), buffer.size(), 0);
+
+    parse_kexinit(buffer.data());
+
     return 0;
 }
+
+void SSHClient::parse_kexinit(uint8_t* packet) {
+
+    int msg = packet[5];
+    std::string kex, server_key, encryption, mac, compression;
+
+    if (msg != 20) {
+        throw std::runtime_error("SSHClient::parse_kexinit() = Invalid msg type");
+    }
+
+    int curr = 22;
+
+    // Returns length of named list
+    auto parseAndMatch = [&](std::string& match, const std::string& knownList) {
+        uint32_t nameListLen = ntohl(*((uint32_t*)(packet + curr)));
+        std::string temp;
+
+        curr += 4;
+        temp.assign((char*)(packet + curr), nameListLen);
+        match = findFirstCommon(knownList, temp);
+
+        return nameListLen;
+    };
+
+    // Find common alorithms
+    curr += parseAndMatch(kex, kex_algos);
+    curr += parseAndMatch(server_key, server_host_key_algos);
+    curr += 4 + (parseAndMatch(encryption, encryption_ctos) * 2); // skip s_to_c
+    curr += 4 + (parseAndMatch(mac, mac_ctos) * 2); // skip s_to_c
+    parseAndMatch(compression, compression_ctos);
+
+    std::cout << kex << " " << server_key << " " << encryption << " " << mac
+    << " "  << compression << std::endl; 
+
+    // TODO: Set appropriate function pointers
+    resolve_crypto(kex, server_key, encryption, mac, compression);
+
+}
+
 
 SSHClient::~SSHClient(){
 }
