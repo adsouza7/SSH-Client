@@ -1,6 +1,7 @@
 CXX = g++
 CPPFLAGS = -std=c++20 -Wall -Wextra -pedantic
 CXXFLAGS = -c -g -I./include/
+LDFLAGS = -lcrypto
 
 BUILD_DIR = build/
 BIN = ssh-client
@@ -15,12 +16,16 @@ clean:
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
-$(BIN): $(BUILD_DIR)SSHClient.o $(BUILD_DIR)ssh.o
-	$(CXX) -o $(BIN) $^
+$(BIN): $(BUILD_DIR)SSHClient.o $(BUILD_DIR)ssh.o $(BUILD_DIR)crypto.o
+	$(CXX) -o $(BIN) $^ $(LDFLAGS)
 
 $(BUILD_DIR)ssh.o: src/ssh.cpp | $(BUILD_DIR)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) src/ssh.cpp -o $@
 
 $(BUILD_DIR)SSHClient.o: src/SSHClient.cpp | $(BUILD_DIR)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) src/SSHClient.cpp -o $@
+
+$(BUILD_DIR)crypto.o: src/crypto.cpp | $(BUILD_DIR)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) src/crypto.cpp -o $@
+
 

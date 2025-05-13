@@ -14,7 +14,7 @@ EVP_PKEY* generateCurve25519KeyPair() {
 
     // Generate key
     EVP_PKEY *keyPair = nullptr;
-    if (EVP_PKEY_keygen(pctx, &keypair) <= 0) {
+    if (EVP_PKEY_keygen(pctx, &keyPair) <= 0) {
         ERR_print_errors_fp(stderr);
         abort();
     }
@@ -27,36 +27,29 @@ EVP_PKEY* generateCurve25519KeyPair() {
 
 
 EVP_PKEY* generateDHGroup14KeyPair() {
-    
-    DH *dh = DH_new();
-    if (!dh) {
+
+    // Create context and initialize to generate DH key
+    EVP_PKEY_CTX *pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_DH, nullptr);
+    if (!pctx || EVP_PKEY_keygen_init(pctx) <= 0) {
         ERR_print_errors_fp(stderr);
         abort();
     }
 
-    // Initialize DH key gen parameters to comply with group 14
+    // set to group 14
     // https://datatracker.ietf.org/doc/html/rfc3526#section-3
-    if (DH_generate_parameters_ex(dh, 2048, DH_GENERATOR_2, nullptr) != 1) {
-        ERR_print_errors_fp(stderr);
-        abort();
-    }
-
-    // Create and initialize keygen context
-    EVP_PKEY_CTX *pctx = EVP_PKEY_CTX_new(dh, nullptr);
-    if (!pctx || EVP_PKEY_keygen)init(pctx) <= 0) {
+    if (EVP_PKEY_CTX_set_dh_nid(pctx, NID_modp_2048) <= 0) {
         ERR_print_errors_fp(stderr);
         abort();
     }
 
     // Generate key
-    EVP_PKEY *keypair = nullptr;
-    if (EVP_PKEY_keygen(pctx, &keypair) <= 0) {
+    EVP_PKEY *keyPair = nullptr;
+    if (EVP_PKEY_keygen(pctx, &keyPair) <= 0) {
         ERR_print_errors_fp(stderr);
         abort();
     }
 
-    // Free keygen contexts
-    DH_free(dh);
+    // Free keygen context
     EVP_PKEY_CTX_free(pctx);
 
     return keyPair;
