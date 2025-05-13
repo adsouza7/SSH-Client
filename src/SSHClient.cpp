@@ -113,19 +113,17 @@ int SSHClient::serverConnect() {
     std::cout << serverIDString << std::endl;
 
     /************** KEY EXCHANGE ******************/
-    std::vector<unsigned char> buf;
-
-    //int bytes = SSHPacket::build_kexinit(buf);
-    //print_hex(buf);
-
+    
     // KEXINIT send
     build_kexinit();
     send(sockFD, client_kexinit.data(), client_kexinit.size(), 0);
 
     // Server KEXINIT recv
     bytesRecv = recv(sockFD, buffer.data(), buffer.size(), 0);
+    server_kexinit = std::vector<uint8_t>(buffer.begin(), buffer.begin() +
+                     bytesRecv);
 
-    parse_kexinit(buffer.data());
+    parse_kexinit(server_kexinit.data());
 
     return 0;
 }
