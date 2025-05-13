@@ -1,6 +1,5 @@
 #include <stdexcept>
 #include <SSHClient.h>
-#include <SSHPacket.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <netdb.h>
@@ -9,6 +8,8 @@
 #include <cstring>
 #include <vector>
 #include <unordered_set>
+#include <cstdlib>
+#include <ctime>
 
 #include <iostream>
 #include <iomanip>
@@ -114,11 +115,12 @@ int SSHClient::serverConnect() {
     /************** KEY EXCHANGE ******************/
     std::vector<unsigned char> buf;
 
-    int bytes = SSHPacket::build_kexinit(buf);
+    //int bytes = SSHPacket::build_kexinit(buf);
     //print_hex(buf);
 
     // KEXINIT send
-    send(sockFD, buf.data(), bytes, 0);
+    build_kexinit();
+    send(sockFD, client_kexinit.data(), client_kexinit.size(), 0);
 
     // Server KEXINIT recv
     bytesRecv = recv(sockFD, buffer.data(), buffer.size(), 0);
@@ -162,10 +164,73 @@ void SSHClient::parse_kexinit(uint8_t* packet) {
     << " "  << compression << std::endl; 
 
     // TODO: Set appropriate function pointers
-    resolve_crypto(kex, server_key, encryption, mac, compression);
+    //resolve_crypto(kex, server_key, encryption, mac, compression);
 
 }
 
+void SSHClient::build_kexinit() {    
+    
+    std::srand(std::time(0));
+
+    // Message code
+    client_kexinit.push_back(20);
+
+    // Cookie
+    for (int i = 0; i < 16; i++) {
+        client_kexinit.push_back(std::rand() % 256);
+    }
+
+    // Lambda to add name_lists to packet
+    auto push_string = [&](const std::string& s) {
+        uint32_t len = s.size();
+        client_kexinit.push_back((len >> 24) & 0xFF);
+        client_kexinit.push_back((len >> 16) & 0xFF);
+        client_kexinit.push_back((len >> 8) & 0xFF);
+        client_kexinit.push_back(len & 0xFF);
+        client_kexinit.insert(client_kexinit.end(), s.begin(), s.end());
+    };
+
+    // Algorithms
+    push_string(kex_algos);
+    push_string(server_host_key_algos);
+    push_string(encryption_ctos);
+    push_string(encryption_stoc);
+    push_string(mac_ctos);
+    push_string(mac_stoc);
+    push_string(compression_ctos);
+    push_string(compression_stoc);
+    push_string(langs_ctos);
+    push_string(langs_stoc);
+
+    // First KEX Packet Follows
+    client_kexinit.push_back(0);
+
+    // Add reserved
+    for (int i = 0; i < 4; i++) {
+        client_kexinit.push_back(0);
+    }
+
+    // Calculate padding
+    int paddingLen = (4 + 1 + client_kexinit.size()) % 8;
+    if (paddingLen < 4) {
+        paddingLen += 8;
+    }
+
+    // Add padding
+    for (int i=0; i < paddingLen; i++) {
+        client_kexinit.push_back(std::rand() % 256);
+    }
+
+    // insert padding length at front
+    client_kexinit.insert(client_kexinit.begin(), paddingLen);
+
+    // insert packet length at front
+    uint32_t packetLen = client_kexinit.size();
+    client_kexinit.insert(client_kexinit.begin(), (packetLen) & 0xFF);
+    client_kexinit.insert(client_kexinit.begin(), (packetLen >> 8) & 0xFF);
+    client_kexinit.insert(client_kexinit.begin(), (packetLen >> 16) & 0xFF);
+    client_kexinit.insert(client_kexinit.begin(), (packetLen >> 24) & 0xFF);
+}
 
 SSHClient::~SSHClient(){
 }

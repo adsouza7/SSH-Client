@@ -3,6 +3,8 @@
 
 #include <iostream>
 #include <string>
+#include <vector>
+
 
 extern const std::string kex_algos;
 extern const std::string server_host_key_algos;
@@ -29,8 +31,39 @@ class SSHClient {
 
     private:
         int sockFD = 0;
+
+        // ID Strings
+        std::string clientIDString;
         std::string serverIDString;
 
+        // KEXINIT Payloads
+        std::vector<uint8_t> client_kexinit;
+        std::vector<uint8_t> server_kexinit;
+
+        // Key Exchange
+        std::vector<uint8_t> dh_client_e;
+        std::vector<uint8_t> dh_client_f;
+        std::vector<uint8_t> shared_secret_K;
+        std::vector<uint8_t> exchange_hash_H;
+
+        // Server Host Key
+        std::vector<uint8_t> server_host_key;
+        std::vector<uint8_t> server_signature;
+
+        // Derived Session Keys
+        std::vector<uint8_t> key_iv_c_to_s;
+        std::vector<uint8_t> key_iv_s_to_c; 
+        std::vector<uint8_t> key_enc_c_to_s;
+        std::vector<uint8_t> key_enc_s_to_c;
+        std::vector<uint8_t> key_mac_c_to_s;
+        std::vector<uint8_t> key_mac_s_to_c;
+
+        // Crypto Objects
+        //EVP_PKEY* client_dh_keypair = nullptr;
+        //EVP_PKEY* server_dh_pubkey = nullptr;
+
+
+        void build_kexinit();
         void parse_kexinit(uint8_t* packet);
         
 };
