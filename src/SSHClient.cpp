@@ -158,11 +158,8 @@ void SSHClient::parse_kexinit(uint8_t* packet) {
     curr += 4 + (parseAndMatch(mac, mac_ctos) * 2); // skip s_to_c
     parseAndMatch(compression, compression_ctos);
 
-    std::cout << kex << " " << server_key << " " << encryption << " " << mac
-    << " "  << compression << std::endl; 
-
     // TODO: Set appropriate function pointers
-    //resolve_crypto(kex, server_key, encryption, mac, compression);
+    resolve_crypto(kex, server_key, encryption, mac, compression);
 
 }
 
@@ -229,6 +226,30 @@ void SSHClient::build_kexinit() {
     client_kexinit.insert(client_kexinit.begin(), (packetLen >> 16) & 0xFF);
     client_kexinit.insert(client_kexinit.begin(), (packetLen >> 24) & 0xFF);
 }
+
+
+void SSHClient::resolve_crypto(std::string& kex, std::string& server_key, 
+    std::string& encryption, std::string& mac, std::string& compression) {
+    
+    // Resolve key exhange algorithms
+    if (kex == "curve25519-sha256") {
+        keyGen = generateCurve25519KeyPair;
+    }
+    else if (kex == "diffie-hellman-group14-sha256") {
+        keyGen = generateDHGroup14KeyPair;
+    }
+    else {
+        throw std::runtime_error("SSHClient::resolve_crypto() = Invalid KEX algorithm");
+    }
+
+    std::cout << kex << " " << server_key << " " << encryption << " " << mac
+    << " "  << compression << std::endl; 
+
+
+
+}
+
+
 
 SSHClient::~SSHClient(){
 }

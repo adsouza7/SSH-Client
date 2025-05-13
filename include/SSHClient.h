@@ -4,6 +4,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <crypto.h>
 
 // Message Numbers
 #define SSH_MSG_KEXINIT     20
@@ -62,12 +63,19 @@ class SSHClient {
         std::vector<uint8_t> key_mac_s_to_c;
 
         // Crypto Objects
-        //EVP_PKEY* client_dh_keypair = nullptr;
-        //EVP_PKEY* server_dh_pubkey = nullptr;
+        EVP_PKEY* client_dh_keypair = nullptr;
+        EVP_PKEY* server_dh_pubkey = nullptr;
+
+        // Key Gen Function Pointer
+        EVP_PKEY* (*keyGen)();
 
 
         void build_kexinit();
         void parse_kexinit(uint8_t* packet);
+        void resolve_crypto(std::string& kex, std::string& server_key, 
+                            std::string& encryption, std::string& mac,
+                            std::string& compression);
+
         
 };
 
