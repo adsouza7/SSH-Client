@@ -5,6 +5,9 @@
 #include <string>
 #include <vector>
 
+// Message Numbers
+#define SSH_MSG_KEXINIT     20
+#define SSH_MSG_KEXDH_INIT  32
 
 extern const std::string kex_algos;
 extern const std::string server_host_key_algos;

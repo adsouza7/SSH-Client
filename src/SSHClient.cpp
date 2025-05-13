@@ -133,7 +133,7 @@ void SSHClient::parse_kexinit(uint8_t* packet) {
     int msg = packet[5];
     std::string kex, server_key, encryption, mac, compression;
 
-    if (msg != 20) {
+    if (msg != SSH_MSG_KEXINIT) {
         throw std::runtime_error("SSHClient::parse_kexinit() = Invalid msg type");
     }
 
@@ -171,7 +171,7 @@ void SSHClient::build_kexinit() {
     std::srand(std::time(0));
 
     // Message code
-    client_kexinit.push_back(20);
+    client_kexinit.push_back(SSH_MSG_KEXINIT);
 
     // Cookie
     for (int i = 0; i < 16; i++) {
