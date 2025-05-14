@@ -1,9 +1,12 @@
 #include <openssl/evp.h>
 #include <openssl/dh.h>
 #include <openssl/err.h>
+#include <openssl/core_names.h>
+#include <openssl/params.h>
+#include <vector>
 #include <iostream>
 
-EVP_PKEY* generateCurve25519KeyPair() {
+EVP_PKEY* generateCurve25519KeyPair(std::vector<uint8_t>& keyBytes) {
     
     // Create context and initialize to generate X25519 key
     EVP_PKEY_CTX *pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_X25519, nullptr);
@@ -22,11 +25,16 @@ EVP_PKEY* generateCurve25519KeyPair() {
     // Free keygen context
     EVP_PKEY_CTX_free(pctx);
 
+    // Update passed in bytes array in place
+    size_t bufferLen = keyBytes.size();
+    EVP_PKEY_get_raw_public_key(keyPair, keyBytes.data(), &bufferLen);
+    keyBytes.resize(bufferLen);
+
     return keyPair;
 }
 
 
-EVP_PKEY* generateDHGroup14KeyPair() {
+EVP_PKEY* generateDHGroup14KeyPair(std::vector<uint8_t>& keyBytes) {
 
     // Create context and initialize to generate DH key
     EVP_PKEY_CTX *pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_DH, nullptr);
@@ -51,6 +59,20 @@ EVP_PKEY* generateDHGroup14KeyPair() {
 
     // Free keygen context
     EVP_PKEY_CTX_free(pctx);
+
+    // Update passed in bytes array in place
+    BIGNUM* pub_key = nullptr;
+
+    if (EVP_PKEY_get_bn_param(keyPair, OSSL_PKEY_PARAM_PUB_KEY, &pub_key) != 1) {
+        ERR_print_errors_fp(stderr);
+        abort();
+    }
+
+    if (BN_bn2bin(pub_key, keyBytes.data()) <= 0) {
+        std::cerr << "Error converting public key to bytes" << std::endl;
+    }
+
+    BN_free(pub_key);
 
     return keyPair;
 

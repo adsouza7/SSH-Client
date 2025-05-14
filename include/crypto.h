@@ -4,10 +4,8 @@
 #include <openssl/evp.h>
 #include <openssl/dh.h>
 #include <openssl/err.h>
-#include <openssl/params.h>
-#include <openssl/core_names.h>
 
-EVP_PKEY* generateCurve25519KeyPair();
-EVP_PKEY* generateDHGroup14KeyPair();
+EVP_PKEY* generateCurve25519KeyPair(std::vector<uint8_t>& keyBytes);
+EVP_PKEY* generateDHGroup14KeyPair(std::vector<uint8_t>& keyBytes);
 
 #endif
