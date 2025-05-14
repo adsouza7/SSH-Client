@@ -18,7 +18,7 @@ const std::string SERVER_PORT = "22";
 const std::string IDString = "SSH-2.0-AaronClient\r\n";
 
 // Supported Algorithms
-const std::string kex_algos = "curve25519-sha256,diffie-hellman-group14-sha256";
+const std::string kex_algos = "curvse25519-sha256,diffie-hellman-group14-sha256";
 const std::string server_host_key_algos = "ssh-ed25519,rsa-sha2-256";
 const std::string encryption_ctos = "aes128-ctr,aes256-ctr";
 const std::string encryption_stoc = "aes128-ctr,aes256-ctr";
@@ -236,28 +236,10 @@ void SSHClient::resolve_crypto(std::string& kex, std::string& server_key,
     
     // Resolve key exhange algorithms
     if (kex == "curve25519-sha256") {
-        client_dh_keypair = generateCurve25519KeyPair();
-
-        size_t bufferLen = dh_client_e.size();
-        EVP_PKEY_get_raw_public_key(client_dh_keypair, dh_client_e.data(),
-            &bufferLen);
-        dh_client_e.resize(bufferLen);
-
+        keyGen = generateCurve25519KeyPair; 
     }
     else if (kex == "diffie-hellman-group14-sha256") {
-        client_dh_keypair  = generateDHGroup14KeyPair();
-
-        BIGNUM* pub_key = nullptr;
-
-        if (EVP_PKEY_get_bn_param(client_dh_keypair, OSSL_PKEY_PARAM_PUB_KEY, &pub_key) != 1) {
-            std::cerr << "Error getting public key" << std::endl;
-        }
-
-        if (BN_bn2bin(pub_key, dh_client_e.data()) <= 0) {
-            std::cerr << "Error converting public key to bytes" << std::endl;
-        }   
-
-        BN_free(pub_key);
+        keyGen  = generateDHGroup14KeyPair;
     }
     else {
         throw std::runtime_error("SSHClient::resolve_crypto() = Invalid KEX algorithm");
@@ -276,18 +258,27 @@ void SSHClient::resolve_crypto(std::string& kex, std::string& server_key,
 
 void SSHClient::build_dh_kexinit(std::vector<uint8_t>& buffer) {
     
-    /*
-    client_dh_keypair = keyGen();
+    
+    client_dh_keypair = keyGen(dh_client_e);
     if (!client_dh_keypair) {
         throw std::runtime_error("SSHClient::build_dh_kexinit() = Key Gen Failed");
     }
 
-    size_t bufferLen = dh_client_e.size();
-    EVP_PKEY_get_raw_public_key(client_dh_keypair, dh_client_e.data(),
-        &bufferLen);
+    buffer.assign(dh_client_e.begin(), dh_client_e.end());
+    
+    // Accomodate extra padding for DH14 key (old) if necessary
+    if (EVP_PKEY_id(client_dh_keypair) == EVP_PKEY_DH && buffer[0] >= 0x80) {
+        buffer.insert(buffer.begin(), 0);
+    }
 
-    */
-    print_hex(dh_client_e, dh_client_e.size());
+    uint32_t keySize = buffer.size();
+    buffer.insert(buffer.begin(), (keySize) & 0xFF);
+    buffer.insert(buffer.begin(), (keySize >> 8) & 0xFF);
+    buffer.insert(buffer.begin(), (keySize >> 16) & 0xFF);
+    buffer.insert(buffer.begin(), (keySize >> 24) & 0xFF);
+
+
+    print_hex(buffer, buffer.size());
 }
 
 

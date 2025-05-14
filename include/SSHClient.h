@@ -67,7 +67,7 @@ class SSHClient {
         EVP_PKEY* server_dh_pubkey = nullptr;
 
         // Key Gen Function Pointer
-        EVP_PKEY* (*keyGen)();
+        EVP_PKEY* (*keyGen)(std::vector<uint8_t>&);
 
 
         void build_kexinit();
