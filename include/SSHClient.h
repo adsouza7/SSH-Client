@@ -45,7 +45,7 @@ class SSHClient {
         std::vector<uint8_t> server_kexinit;
 
         // Key Exchange
-        std::vector<uint8_t> dh_client_e;
+        std::vector<uint8_t> dh_client_e = std::vector<uint8_t>(256);
         std::vector<uint8_t> dh_client_f;
         std::vector<uint8_t> shared_secret_K;
         std::vector<uint8_t> exchange_hash_H;
@@ -75,6 +75,8 @@ class SSHClient {
         void resolve_crypto(std::string& kex, std::string& server_key, 
                             std::string& encryption, std::string& mac,
                             std::string& compression);
+
+        void build_dh_kexinit(std::vector<uint8_t>& buffer);
 
         
 };

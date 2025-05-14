@@ -125,6 +125,9 @@ int SSHClient::serverConnect() {
 
     parse_kexinit(server_kexinit.data());
 
+    buffer.clear();
+    build_dh_kexinit(buffer);
+
     return 0;
 }
 
@@ -242,11 +245,29 @@ void SSHClient::resolve_crypto(std::string& kex, std::string& server_key,
         throw std::runtime_error("SSHClient::resolve_crypto() = Invalid KEX algorithm");
     }
 
+    // TODO: Resolve server host key algorithms
+    // TODO: Resolve encryption algorithms
+    // TODO: Resolve MAC algorithms
+
     std::cout << kex << " " << server_key << " " << encryption << " " << mac
     << " "  << compression << std::endl; 
 
 
 
+}
+
+void SSHClient::build_dh_kexinit(std::vector<uint8_t>& buffer) {
+    
+    client_dh_keypair = keyGen();
+    if (!client_dh_keypair) {
+        throw std::runtime_error("SSHClient::build_dh_kexinit() = Key Gen Failed");
+    }
+
+    size_t bufferLen = dh_client_e.size();
+    EVP_PKEY_get_raw_public_key(client_dh_keypair, dh_client_e.data(),
+        &bufferLen);
+
+    print_hex(dh_client_e, bufferLen);
 }
 
 
