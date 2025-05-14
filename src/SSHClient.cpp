@@ -236,10 +236,28 @@ void SSHClient::resolve_crypto(std::string& kex, std::string& server_key,
     
     // Resolve key exhange algorithms
     if (kex == "curve25519-sha256") {
-        keyGen = generateCurve25519KeyPair;
+        client_dh_keypair = generateCurve25519KeyPair();
+
+        size_t bufferLen = dh_client_e.size();
+        EVP_PKEY_get_raw_public_key(client_dh_keypair, dh_client_e.data(),
+            &bufferLen);
+        dh_client_e.resize(bufferLen);
+
     }
     else if (kex == "diffie-hellman-group14-sha256") {
-        keyGen = generateDHGroup14KeyPair;
+        client_dh_keypair  = generateDHGroup14KeyPair();
+
+        BIGNUM* pub_key = nullptr;
+
+        if (EVP_PKEY_get_bn_param(client_dh_keypair, OSSL_PKEY_PARAM_PUB_KEY, &pub_key) != 1) {
+            std::cerr << "Error getting public key" << std::endl;
+        }
+
+        if (BN_bn2bin(pub_key, dh_client_e.data()) <= 0) {
+            std::cerr << "Error converting public key to bytes" << std::endl;
+        }   
+
+        BN_free(pub_key);
     }
     else {
         throw std::runtime_error("SSHClient::resolve_crypto() = Invalid KEX algorithm");
@@ -258,6 +276,7 @@ void SSHClient::resolve_crypto(std::string& kex, std::string& server_key,
 
 void SSHClient::build_dh_kexinit(std::vector<uint8_t>& buffer) {
     
+    /*
     client_dh_keypair = keyGen();
     if (!client_dh_keypair) {
         throw std::runtime_error("SSHClient::build_dh_kexinit() = Key Gen Failed");
@@ -267,7 +286,8 @@ void SSHClient::build_dh_kexinit(std::vector<uint8_t>& buffer) {
     EVP_PKEY_get_raw_public_key(client_dh_keypair, dh_client_e.data(),
         &bufferLen);
 
-    print_hex(dh_client_e, bufferLen);
+    */
+    print_hex(dh_client_e, dh_client_e.size());
 }
 
 
