@@ -29,12 +29,12 @@ const std::string compression_stoc = "none";
 const std::string langs_ctos = "";
 const std::string langs_stoc = "";
 
-void print_hex(const std::vector<uint8_t>& data, size_t size) {
+void print_hex(uint8_t* data, size_t size) {
     for (size_t i = 0; i < size; ++i) {
         if (i % 16 == 0) std::cout << std::setw(4) << std::setfill('0') << i << ": ";
         std::cout << std::hex << std::setw(2) << std::setfill('0')
                   << static_cast<int>(data[i]) << ' ';
-        if (i % 16 == 15 || i == data.size() - 1) std::cout << '\n';
+        if (i % 16 == 15 || i == size - 1) std::cout << '\n';
     }
 }
 
@@ -100,6 +100,43 @@ SSHClient::SSHClient(const std::string& hostname) {
     }
 }
 
+Packet* SSHClient::receivePacket() {
+    
+    Packet* recvPacket = nullptr;
+
+    if (packetRecvQ.size() < 2) {
+
+        std::vector<uint8_t> recvData(MAX_PACKET_SIZE);
+        int recvLen;
+
+        recvLen = recv(sockFD, recvData.data(), MAX_PACKET_SIZE, 0);
+        if (recvLen > 0) {
+            
+            int curr = 0;
+            uint32_t packetLen = 0;
+            uint8_t paddingLen = 0;
+
+            while (curr < recvLen) {
+                packetLen = ntohl(((uint32_t*)(recvData.data() + curr))[0]);
+                paddingLen = recvData[curr + 4];
+
+                packetRecvQ.push(new Packet((recvData.data() + curr + 5),
+                    packetLen - paddingLen - 1));
+
+                curr += packetLen + 4;
+
+            }
+        }
+    }
+
+    if(!packetRecvQ.empty()) {
+        recvPacket = packetRecvQ.front();
+        packetRecvQ.pop();
+    }
+
+    return recvPacket;
+}
+
 int SSHClient::serverConnect() {
 
     std::vector<uint8_t> buffer(32768);
@@ -121,6 +158,9 @@ int SSHClient::serverConnect() {
     send(sockFD, client_kexinit.data(), client_kexinit.size(), 0);
 
     // Server KEXINIT recv
+    Packet* packet = receivePacket();
+    print_hex(packet->buffer, packet->len);
+    /*
     bytesRecv = recv(sockFD, buffer.data(), buffer.size(), 0);
     server_kexinit = std::vector<uint8_t>(buffer.begin(), buffer.begin() +
                      bytesRecv);
@@ -131,6 +171,7 @@ int SSHClient::serverConnect() {
     buffer.clear();
     build_dh_kexinit(buffer);
     send(sockFD, buffer.data(), buffer.size(), 0);
+    */
 
     return 0;
 }
@@ -294,7 +335,7 @@ void SSHClient::build_dh_kexinit(std::vector<uint8_t>& buffer) {
 
     wrap_packet(buffer);
 
-    print_hex(buffer, buffer.size());
+    //print_hex(buffer, buffer.size());
 }
 
 

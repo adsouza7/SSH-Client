@@ -9,6 +9,7 @@ struct Packet {
     uint8_t* buffer;
     size_t len;
 
+    Packet() = default;
     Packet(uint8_t* packetBytes, size_t numBytes) {
         
         // Dynamically allocate enough memory for the packet

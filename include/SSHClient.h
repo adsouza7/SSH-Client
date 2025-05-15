@@ -5,6 +5,10 @@
 #include <string>
 #include <vector>
 #include <crypto.h>
+#include <packet.h>
+#include <queue>
+
+#define MAX_PACKET_SIZE 32768
 
 // Message Numbers
 #define SSH_MSG_KEXINIT     20
@@ -29,12 +33,15 @@ class SSHClient {
 
         int serverConnect();
         int sendPacket();
-        int receivePacket();
+        Packet* receivePacket();
         int serverDisconnect();
 
 
     private:
         int sockFD = 0;
+
+        // Packet Recv Buffer
+        std::queue<Packet*> packetRecvQ;
 
         // ID Strings
         std::string clientIDString;
