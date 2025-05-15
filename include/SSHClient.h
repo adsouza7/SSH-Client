@@ -48,8 +48,8 @@ class SSHClient {
         std::string serverIDString;
 
         // KEXINIT Payloads
-        std::vector<uint8_t> client_kexinit;
-        std::vector<uint8_t> server_kexinit;
+        Packet* client_kexinit;
+        Packet* server_kexinit;
 
         // Key Exchange
         std::vector<uint8_t> dh_client_e = std::vector<uint8_t>(256);

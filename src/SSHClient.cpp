@@ -29,7 +29,7 @@ const std::string compression_stoc = "none";
 const std::string langs_ctos = "";
 const std::string langs_stoc = "";
 
-void print_hex(uint8_t* data, size_t size) {
+void print_hex(std::vector<uint8_t>& data, size_t size) {
     for (size_t i = 0; i < size; ++i) {
         if (i % 16 == 0) std::cout << std::setw(4) << std::setfill('0') << i << ": ";
         std::cout << std::hex << std::setw(2) << std::setfill('0')
@@ -153,20 +153,20 @@ int SSHClient::serverConnect() {
 
     /************** KEY EXCHANGE ******************/
     
+    std::vector<uint8_t> packetBytes;
+
     // KEXINIT send
     build_kexinit();
-    send(sockFD, client_kexinit.data(), client_kexinit.size(), 0);
+    this->client_kexinit->serializePacket(packetBytes);
+    send(sockFD, packetBytes.data(), packetBytes.size(), 0);
 
     // Server KEXINIT recv
-    Packet* packet = receivePacket();
-    print_hex(packet->buffer, packet->len);
+    this->server_kexinit = receivePacket();
+    print_hex(server_kexinit->buffer, server_kexinit->buffer.size());
+
+    parse_kexinit();
+
     /*
-    bytesRecv = recv(sockFD, buffer.data(), buffer.size(), 0);
-    server_kexinit = std::vector<uint8_t>(buffer.begin(), buffer.begin() +
-                     bytesRecv);
-
-    parse_kexinit(server_kexinit.data());
-
     // DH_KEXINIT send
     buffer.clear();
     build_dh_kexinit(buffer);
@@ -205,9 +205,9 @@ void SSHClient::wrap_packet(std::vector<uint8_t>& packet) {
 }
 
 
-void SSHClient::parse_kexinit(uint8_t* packet) {
+void SSHClient::parse_kexinit() {
 
-    int msg = packet[5];
+    int msg = server_kexinit->getMessageCode();
     std::string kex, server_key, encryption, mac, compression;
 
     if (msg != SSH_MSG_KEXINIT) {
@@ -216,7 +216,7 @@ void SSHClient::parse_kexinit(uint8_t* packet) {
 
     int curr = 22;
 
-    // Returns length of named list
+    // Returns length of name-list
     auto parseAndMatch = [&](std::string& match, const std::string& knownList) {
         uint32_t nameListLen = ntohl(*((uint32_t*)(packet + curr)));
         std::string temp;
@@ -242,6 +242,36 @@ void SSHClient::parse_kexinit(uint8_t* packet) {
 
 void SSHClient::build_kexinit() {    
     
+    client_kexinit = new Packet();
+
+    // Message code
+    client_kexinit->addByte(SSH_MSG_KEXINIT);
+
+    // Cookie
+    for (int i = 0; i < 16; i++) {
+        client_kexinit->addByte(std::rand() % 256);
+    }
+
+    // Algorithms
+    client_kexinit->addString(kex_algos);
+    client_kexinit->addString(server_host_key_algos);
+    client_kexinit->addString(encryption_ctos);
+    client_kexinit->addString(encryption_stoc);
+    client_kexinit->addString(mac_ctos);
+    client_kexinit->addString(mac_stoc);
+    client_kexinit->addString(compression_ctos);
+    client_kexinit->addString(compression_stoc);
+    client_kexinit->addString(langs_ctos);
+    client_kexinit->addString(langs_stoc);
+
+    // First KEX Packet Follows
+    client_kexinit->addByte(0);
+
+    // Reserved Bytes
+    client_kexinit->addWord(0);
+
+
+    /*
     // Message code
     client_kexinit.push_back(SSH_MSG_KEXINIT);
 
@@ -282,6 +312,7 @@ void SSHClient::build_kexinit() {
 
     // Wrap packet with padding and size
     wrap_packet(client_kexinit);
+    */
 }
 
 

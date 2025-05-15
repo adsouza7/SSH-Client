@@ -16,7 +16,8 @@ clean:
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
-$(BIN): $(BUILD_DIR)SSHClient.o $(BUILD_DIR)ssh.o $(BUILD_DIR)crypto.o
+$(BIN): $(BUILD_DIR)SSHClient.o $(BUILD_DIR)ssh.o $(BUILD_DIR)packet.o\
+        $(BUILD_DIR)crypto.o
 	$(CXX) -o $(BIN) $^ $(LDFLAGS)
 
 $(BUILD_DIR)ssh.o: src/ssh.cpp | $(BUILD_DIR)
@@ -27,5 +28,10 @@ $(BUILD_DIR)SSHClient.o: src/SSHClient.cpp | $(BUILD_DIR)
 
 $(BUILD_DIR)crypto.o: src/crypto.cpp | $(BUILD_DIR)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) src/crypto.cpp -o $@
+
+$(BUILD_DIR)packet.o: src/packet.cpp | $(BUILD_DIR)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) src/packet.cpp -o $@
+
+
 
 

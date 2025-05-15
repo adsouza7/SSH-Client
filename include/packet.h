@@ -3,31 +3,25 @@
 
 #include <new>
 #include <cstring>
+#include <cstdint>
+#include <vector>
+#include <string>
 
 struct Packet {
     
-    uint8_t* buffer;
-    size_t len;
+    std::vector<uint8_t> buffer;
 
     Packet() = default;
     Packet(uint8_t* packetBytes, size_t numBytes) {
-        
-        // Dynamically allocate enough memory for the packet
-        buffer = new (std::nothrow)uint8_t[numBytes];
-        if (!buffer) {
-            throw std::runtime_error("Packet buffer allocation failed");
-        }
-
-        memcpy(buffer, packetBytes, numBytes);
-
-        len = numBytes;
+        buffer.assign(packetBytes, packetBytes + numBytes);
     }
-
     ~Packet() {
-        if (buffer) {
-            delete [] buffer;
-        }
     }
+
+    void addByte(uint8_t byte);
+    void addWord(uint32_t word);
+    void addString(const std::string& string);
+    void serializePacket(std::vector<uint8_t>& byteArr);
 
 };
 
