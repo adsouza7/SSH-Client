@@ -20,7 +20,16 @@ struct Packet {
 
     void addByte(uint8_t byte);
     void addWord(uint32_t word);
-    void addString(const std::string& string);
+    void addMPInt(std::vector<uint8_t>& byteArr);
+
+    template <typename Container>
+    void addString(const Container& data) {
+        this->addWord(data.size());
+        buffer.insert(buffer.end(), data.begin(), data.end());
+    }
+
+    uint8_t getMessageCode();
+
     void serializePacket(std::vector<uint8_t>& byteArr);
 
 };

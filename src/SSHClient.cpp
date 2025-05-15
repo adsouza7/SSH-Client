@@ -18,7 +18,7 @@ const std::string SERVER_PORT = "22";
 const std::string IDString = "SSH-2.0-AaronClient\r\n";
 
 // Supported Algorithms
-const std::string kex_algos = "curves25519-sha256,diffie-hellman-group14-sha256";
+const std::string kex_algos = "curve25519-sha256,diffie-hellman-group14-sha256";
 const std::string server_host_key_algos = "ssh-ed25519,rsa-sha2-256";
 const std::string encryption_ctos = "aes128-ctr,aes256-ctr";
 const std::string encryption_stoc = "aes128-ctr,aes256-ctr";
@@ -166,12 +166,9 @@ int SSHClient::serverConnect() {
 
     parse_kexinit();
 
-    /*
     // DH_KEXINIT send
-    buffer.clear();
-    build_dh_kexinit(buffer);
-    send(sockFD, buffer.data(), buffer.size(), 0);
-    */
+    build_dh_kexinit(packetBytes);
+    send(sockFD, packetBytes.data(), packetBytes.size(), 0);
 
     return 0;
 }
@@ -210,11 +207,13 @@ void SSHClient::parse_kexinit() {
     int msg = server_kexinit->getMessageCode();
     std::string kex, server_key, encryption, mac, compression;
 
+    uint8_t* packet = server_kexinit->buffer.data();
+
     if (msg != SSH_MSG_KEXINIT) {
         throw std::runtime_error("SSHClient::parse_kexinit() = Invalid msg type");
     }
 
-    int curr = 22;
+    int curr = 17;
 
     // Returns length of name-list
     auto parseAndMatch = [&](std::string& match, const std::string& knownList) {
@@ -270,49 +269,6 @@ void SSHClient::build_kexinit() {
     // Reserved Bytes
     client_kexinit->addWord(0);
 
-
-    /*
-    // Message code
-    client_kexinit.push_back(SSH_MSG_KEXINIT);
-
-    // Cookie
-    for (int i = 0; i < 16; i++) {
-        client_kexinit.push_back(std::rand() % 256);
-    }
-
-    // Lambda to add name_lists to packet
-    auto push_string = [&](const std::string& s) {
-        uint32_t len = s.size();
-        client_kexinit.push_back((len >> 24) & 0xFF);
-        client_kexinit.push_back((len >> 16) & 0xFF);
-        client_kexinit.push_back((len >> 8) & 0xFF);
-        client_kexinit.push_back(len & 0xFF);
-        client_kexinit.insert(client_kexinit.end(), s.begin(), s.end());
-    };
-
-    // Algorithms
-    push_string(kex_algos);
-    push_string(server_host_key_algos);
-    push_string(encryption_ctos);
-    push_string(encryption_stoc);
-    push_string(mac_ctos);
-    push_string(mac_stoc);
-    push_string(compression_ctos);
-    push_string(compression_stoc);
-    push_string(langs_ctos);
-    push_string(langs_stoc);
-
-    // First KEX Packet Follows
-    client_kexinit.push_back(0);
-
-    // Add reserved
-    for (int i = 0; i < 4; i++) {
-        client_kexinit.push_back(0);
-    }
-
-    // Wrap packet with padding and size
-    wrap_packet(client_kexinit);
-    */
 }
 
 
@@ -341,7 +297,7 @@ void SSHClient::resolve_crypto(std::string& kex, std::string& server_key,
 
 }
 
-void SSHClient::build_dh_kexinit(std::vector<uint8_t>& buffer) {
+void SSHClient::build_dh_kexinit(std::vector<uint8_t>& packet) {
     
     
     client_dh_keypair = keyGen(dh_client_e);
@@ -349,24 +305,21 @@ void SSHClient::build_dh_kexinit(std::vector<uint8_t>& buffer) {
         throw std::runtime_error("SSHClient::build_dh_kexinit() = Key Gen Failed");
     }
 
-    buffer.assign(dh_client_e.begin(), dh_client_e.end());
-    
-    // Accomodate extra padding for DH14 key (old) if necessary
-    if (EVP_PKEY_id(client_dh_keypair) == EVP_PKEY_DH && buffer[0] >= 0x80) {
-        buffer.insert(buffer.begin(), 0);
+    Packet dh_kexinit;
+
+    // Add message code
+    dh_kexinit.addByte(SSH_MSG_KEXDH_INIT);
+
+    // Accomodate DH14 key
+    if (EVP_PKEY_id(client_dh_keypair) == EVP_PKEY_DH) {
+        dh_kexinit.addMPInt(dh_client_e);
+    }
+    else {
+        dh_kexinit.addString(dh_client_e); 
     }
 
-    uint32_t keySize = buffer.size();
-    buffer.insert(buffer.begin(), (keySize) & 0xFF);
-    buffer.insert(buffer.begin(), (keySize >> 8) & 0xFF);
-    buffer.insert(buffer.begin(), (keySize >> 16) & 0xFF);
-    buffer.insert(buffer.begin(), (keySize >> 24) & 0xFF);
+    dh_kexinit.serializePacket(packet);
 
-    buffer.insert(buffer.begin(), SSH_MSG_KEXDH_INIT);
-
-    wrap_packet(buffer);
-
-    //print_hex(buffer, buffer.size());
 }
 
 

@@ -79,7 +79,7 @@ class SSHClient {
 
         void wrap_packet(std::vector<uint8_t>& packet);
         void build_kexinit();
-        void parse_kexinit(uint8_t* packet);
+        void parse_kexinit();
         void resolve_crypto(std::string& kex, std::string& server_key, 
                             std::string& encryption, std::string& mac,
                             std::string& compression);
