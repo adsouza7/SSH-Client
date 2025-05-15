@@ -18,7 +18,7 @@ const std::string SERVER_PORT = "22";
 const std::string IDString = "SSH-2.0-AaronClient\r\n";
 
 // Supported Algorithms
-const std::string kex_algos = "curvse25519-sha256,diffie-hellman-group14-sha256";
+const std::string kex_algos = "curves25519-sha256,diffie-hellman-group14-sha256";
 const std::string server_host_key_algos = "ssh-ed25519,rsa-sha2-256";
 const std::string encryption_ctos = "aes128-ctr,aes256-ctr";
 const std::string encryption_stoc = "aes128-ctr,aes256-ctr";
@@ -73,6 +73,8 @@ std::string findFirstCommon(const std::string& client,
 
 SSHClient::SSHClient(const std::string& hostname) {
     std::cout << "Hostname: " << hostname << std::endl;
+ 
+    std::srand(std::time(0));
 
     int ret;
     struct addrinfo hints, *serverAddr;
@@ -125,11 +127,42 @@ int SSHClient::serverConnect() {
 
     parse_kexinit(server_kexinit.data());
 
+    // DH_KEXINIT send
     buffer.clear();
     build_dh_kexinit(buffer);
+    send(sockFD, buffer.data(), buffer.size(), 0);
 
     return 0;
 }
+
+
+void SSHClient::wrap_packet(std::vector<uint8_t>& packet) {
+
+    std::cout << packet.size() << std::endl;
+
+    // Calculate padding
+    int paddingLen = 8 - ((4 + 1 + packet.size()) % 8);
+    if (paddingLen < 4) {
+        paddingLen += 8;
+    }
+
+    // Add padding
+    for (int i=0; i < paddingLen; i++) {
+        packet.push_back(std::rand() % 256);
+    }
+
+    // insert padding length at front
+    packet.insert(packet.begin(), paddingLen);
+
+    // insert packet length at front
+    uint32_t packetLen = packet.size();
+    packet.insert(packet.begin(), (packetLen) & 0xFF);
+    packet.insert(packet.begin(), (packetLen >> 8) & 0xFF);
+    packet.insert(packet.begin(), (packetLen >> 16) & 0xFF);
+    packet.insert(packet.begin(), (packetLen >> 24) & 0xFF);
+
+}
+
 
 void SSHClient::parse_kexinit(uint8_t* packet) {
 
@@ -168,8 +201,6 @@ void SSHClient::parse_kexinit(uint8_t* packet) {
 
 void SSHClient::build_kexinit() {    
     
-    std::srand(std::time(0));
-
     // Message code
     client_kexinit.push_back(SSH_MSG_KEXINIT);
 
@@ -208,26 +239,8 @@ void SSHClient::build_kexinit() {
         client_kexinit.push_back(0);
     }
 
-    // Calculate padding
-    int paddingLen = (4 + 1 + client_kexinit.size()) % 8;
-    if (paddingLen < 4) {
-        paddingLen += 8;
-    }
-
-    // Add padding
-    for (int i=0; i < paddingLen; i++) {
-        client_kexinit.push_back(std::rand() % 256);
-    }
-
-    // insert padding length at front
-    client_kexinit.insert(client_kexinit.begin(), paddingLen);
-
-    // insert packet length at front
-    uint32_t packetLen = client_kexinit.size();
-    client_kexinit.insert(client_kexinit.begin(), (packetLen) & 0xFF);
-    client_kexinit.insert(client_kexinit.begin(), (packetLen >> 8) & 0xFF);
-    client_kexinit.insert(client_kexinit.begin(), (packetLen >> 16) & 0xFF);
-    client_kexinit.insert(client_kexinit.begin(), (packetLen >> 24) & 0xFF);
+    // Wrap packet with padding and size
+    wrap_packet(client_kexinit);
 }
 
 
@@ -277,6 +290,9 @@ void SSHClient::build_dh_kexinit(std::vector<uint8_t>& buffer) {
     buffer.insert(buffer.begin(), (keySize >> 16) & 0xFF);
     buffer.insert(buffer.begin(), (keySize >> 24) & 0xFF);
 
+    buffer.insert(buffer.begin(), SSH_MSG_KEXDH_INIT);
+
+    wrap_packet(buffer);
 
     print_hex(buffer, buffer.size());
 }

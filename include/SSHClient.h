@@ -8,7 +8,7 @@
 
 // Message Numbers
 #define SSH_MSG_KEXINIT     20
-#define SSH_MSG_KEXDH_INIT  32
+#define SSH_MSG_KEXDH_INIT  30
 
 extern const std::string kex_algos;
 extern const std::string server_host_key_algos;
@@ -70,6 +70,7 @@ class SSHClient {
         EVP_PKEY* (*keyGen)(std::vector<uint8_t>&);
 
 
+        void wrap_packet(std::vector<uint8_t>& packet);
         void build_kexinit();
         void parse_kexinit(uint8_t* packet);
         void resolve_crypto(std::string& kex, std::string& server_key, 
