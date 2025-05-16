@@ -52,7 +52,7 @@ class SSHClient {
         Packet* server_kexinit;
 
         // Key Exchange
-        std::vector<uint8_t> dh_client_e = std::vector<uint8_t>(256);
+        std::vector<uint8_t> dh_client_e;
         std::vector<uint8_t> dh_client_f;
         std::vector<uint8_t> shared_secret_K;
         std::vector<uint8_t> exchange_hash_H;
@@ -74,7 +74,8 @@ class SSHClient {
         EVP_PKEY* server_dh_pubkey = nullptr;
 
         // Key Gen Function Pointer
-        EVP_PKEY* (*keyGen)(std::vector<uint8_t>&);
+        EVP_PKEY* (*DHKeyGen)();
+        void (*DHKey2Bytes)(EVP_PKEY*, std::vector<uint8_t>&);
 
 
         void wrap_packet(std::vector<uint8_t>& packet);

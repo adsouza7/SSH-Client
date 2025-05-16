@@ -17,7 +17,7 @@ $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
 $(BIN): $(BUILD_DIR)SSHClient.o $(BUILD_DIR)ssh.o $(BUILD_DIR)packet.o\
-        $(BUILD_DIR)crypto.o
+        $(BUILD_DIR)dh-14.o $(BUILD_DIR)curve25519.o
 	$(CXX) -o $(BIN) $^ $(LDFLAGS)
 
 $(BUILD_DIR)ssh.o: src/ssh.cpp | $(BUILD_DIR)
@@ -32,6 +32,8 @@ $(BUILD_DIR)crypto.o: src/crypto.cpp | $(BUILD_DIR)
 $(BUILD_DIR)packet.o: src/packet.cpp | $(BUILD_DIR)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) src/packet.cpp -o $@
 
+$(BUILD_DIR)dh-14.o: src/dh-14.cpp | $(BUILD_DIR)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) src/dh-14.cpp -o $@
 
-
-
+$(BUILD_DIR)curve25519.o: src/curve25519.cpp | $(BUILD_DIR)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) src/curve25519.cpp -o $@

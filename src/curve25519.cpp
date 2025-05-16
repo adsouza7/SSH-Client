@@ -5,7 +5,7 @@
 #include <vector>
 #include <iostream>
 
-EVP_PKEY* generateCurve25519KeyPair(std::vector<uint8_t>& keyBytes) {
+EVP_PKEY* generateCurve25519KeyPair() {
     
     // Create context and initialize to generate X25519 key
     EVP_PKEY_CTX *pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_X25519, nullptr);
@@ -23,13 +23,21 @@ EVP_PKEY* generateCurve25519KeyPair(std::vector<uint8_t>& keyBytes) {
 
     // Free keygen context
     EVP_PKEY_CTX_free(pctx);
+ 
+    return keyPair;
+}
 
-    // Update passed in bytes array in place
-    size_t bufferLen = keyBytes.size();
-    EVP_PKEY_get_raw_public_key(keyPair, keyBytes.data(), &bufferLen);
+void curve25519PubKey2Bytes(EVP_PKEY* keyPair, std::vector<uint8_t>& keyBytes) {
+
+    // Get size required to store bytes
+    size_t bufferLen = 0;
+    EVP_PKEY_get_raw_public_key(keyPair, nullptr, &bufferLen);
+    
     keyBytes.resize(bufferLen);
 
-    return keyPair;
+    // Add bytes to array
+    EVP_PKEY_get_raw_public_key(keyPair, keyBytes.data(), &bufferLen);
+
 }
 
 

@@ -7,7 +7,7 @@
 #include <iostream>
 
 
-EVP_PKEY* generateDHGroup14KeyPair(std::vector<uint8_t>& keyBytes) {
+EVP_PKEY* generateDHGroup14KeyPair() {
 
     // Create context and initialize to generate DH key
     EVP_PKEY_CTX *pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_DH, nullptr);
@@ -33,7 +33,13 @@ EVP_PKEY* generateDHGroup14KeyPair(std::vector<uint8_t>& keyBytes) {
     // Free keygen context
     EVP_PKEY_CTX_free(pctx);
 
-    // Update passed in bytes array in place
+    return keyPair;
+
+}
+
+
+void DHGroup14PubKey2Bytes(EVP_PKEY* keyPair, std::vector<uint8_t>& keyBytes) {
+
     BIGNUM* pub_key = nullptr;
 
     if (EVP_PKEY_get_bn_param(keyPair, OSSL_PKEY_PARAM_PUB_KEY, &pub_key) != 1) {
@@ -41,12 +47,12 @@ EVP_PKEY* generateDHGroup14KeyPair(std::vector<uint8_t>& keyBytes) {
         abort();
     }
 
+    int keyLen = BN_num_bytes(pub_key);
+    keyBytes.resize(keyLen);
+
     if (BN_bn2bin(pub_key, keyBytes.data()) <= 0) {
         std::cerr << "Error converting public key to bytes" << std::endl;
     }
 
     BN_free(pub_key);
-
-    return keyPair;
-
 }

@@ -251,10 +251,12 @@ void SSHClient::resolve_crypto(std::string& kex, std::string& server_key,
     
     // Resolve key exhange algorithms
     if (kex == "curve25519-sha256") {
-        keyGen = generateCurve25519KeyPair; 
+        DHKeyGen = generateCurve25519KeyPair;
+        DHKey2Bytes = curve25519PubKey2Bytes;
     }
     else if (kex == "diffie-hellman-group14-sha256") {
-        keyGen  = generateDHGroup14KeyPair;
+        DHKeyGen  = generateDHGroup14KeyPair;
+        DHKey2Bytes = DHGroup14PubKey2Bytes;
     }
     else {
         throw std::runtime_error("SSHClient::resolve_crypto() = Invalid KEX algorithm");
@@ -274,22 +276,25 @@ void SSHClient::resolve_crypto(std::string& kex, std::string& server_key,
 void SSHClient::build_dh_kexinit(std::vector<uint8_t>& packet) {
     
     
-    client_dh_keypair = keyGen(dh_client_e);
+    client_dh_keypair = DHKeyGen();
     if (!client_dh_keypair) {
         throw std::runtime_error("SSHClient::build_dh_kexinit() = Key Gen Failed");
     }
 
     Packet dh_kexinit;
+    std::vector<uint8_t> keyBytes;
+
+    DHKey2Bytes(client_dh_keypair, keyBytes);
 
     // Add message code
     dh_kexinit.addByte(SSH_MSG_KEXDH_INIT);
 
     // Accomodate DH14 key
     if (EVP_PKEY_id(client_dh_keypair) == EVP_PKEY_DH) {
-        dh_kexinit.addMPInt(dh_client_e);
+        dh_kexinit.addMPInt(keyBytes);
     }
     else {
-        dh_kexinit.addString(dh_client_e); 
+        dh_kexinit.addString(keyBytes); 
     }
 
     dh_kexinit.serializePacket(packet);
