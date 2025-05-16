@@ -162,43 +162,17 @@ int SSHClient::serverConnect() {
 
     // Server KEXINIT recv
     this->server_kexinit = receivePacket();
-    print_hex(server_kexinit->buffer, server_kexinit->buffer.size());
-
     parse_kexinit();
 
     // DH_KEXINIT send
     build_dh_kexinit(packetBytes);
     send(sockFD, packetBytes.data(), packetBytes.size(), 0);
 
+    Packet* recvPacket = receivePacket();
+    print_hex(recvPacket->buffer, recvPacket->buffer.size());
+    delete recvPacket;
+
     return 0;
-}
-
-
-void SSHClient::wrap_packet(std::vector<uint8_t>& packet) {
-
-    std::cout << packet.size() << std::endl;
-
-    // Calculate padding
-    int paddingLen = 8 - ((4 + 1 + packet.size()) % 8);
-    if (paddingLen < 4) {
-        paddingLen += 8;
-    }
-
-    // Add padding
-    for (int i=0; i < paddingLen; i++) {
-        packet.push_back(std::rand() % 256);
-    }
-
-    // insert padding length at front
-    packet.insert(packet.begin(), paddingLen);
-
-    // insert packet length at front
-    uint32_t packetLen = packet.size();
-    packet.insert(packet.begin(), (packetLen) & 0xFF);
-    packet.insert(packet.begin(), (packetLen >> 8) & 0xFF);
-    packet.insert(packet.begin(), (packetLen >> 16) & 0xFF);
-    packet.insert(packet.begin(), (packetLen >> 24) & 0xFF);
-
 }
 
 
