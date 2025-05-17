@@ -13,6 +13,7 @@
 // Message Numbers
 #define SSH_MSG_KEXINIT     20
 #define SSH_MSG_KEXDH_INIT  30
+#define SSH_MSG_KEXDH_REPLY 31
 
 extern const std::string kex_algos;
 extern const std::string server_host_key_algos;
@@ -86,6 +87,7 @@ class SSHClient {
                             std::string& compression);
 
         void build_dh_kexinit(std::vector<uint8_t>& buffer);
+        void parse_dh_kex_reply(Packet* packet);
 
         
 };

@@ -169,7 +169,8 @@ int SSHClient::serverConnect() {
     send(sockFD, packetBytes.data(), packetBytes.size(), 0);
 
     Packet* recvPacket = receivePacket();
-    print_hex(recvPacket->buffer, recvPacket->buffer.size());
+    //print_hex(recvPacket->buffer, recvPacket->buffer.size());
+    parse_dh_kex_reply(recvPacket);
     delete recvPacket;
 
     return 0;
@@ -253,6 +254,7 @@ void SSHClient::resolve_crypto(std::string& kex, std::string& server_key,
     if (kex == "curve25519-sha256") {
         DHKeyGen = generateCurve25519KeyPair;
         DHKey2Bytes = curve25519PubKey2Bytes;
+        bytes2DHKey = curve25519Bytes2PubKey;
     }
     else if (kex == "diffie-hellman-group14-sha256") {
         DHKeyGen  = generateDHGroup14KeyPair;
@@ -302,6 +304,55 @@ void SSHClient::build_dh_kexinit(std::vector<uint8_t>& packet) {
 }
 
 
+void SSHClient::parse_dh_kex_reply(Packet* packet) {
+    
+    int msg = packet->getMessageCode();
+    uint8_t* contents = packet->buffer.data();
+    std::vector<uint8_t> temp;
+
+    if (msg != SSH_MSG_KEXDH_REPLY) {
+        throw std::runtime_error("SSHClient::parse_kexinit() = Invalid msg type");
+    }
+
+    int curr = 5;
+
+    // Skip over host key type
+    uint32_t len = ntohl(*((uint32_t*)(contents + curr)));
+    curr += 4 + len;
+
+    // Read EdDSA public key
+    len = ntohl(*((uint32_t*)(contents + curr)));
+    curr += 4;
+    temp.assign(contents+curr, contents+curr+len);
+    //print_hex(temp, temp.size());
+    curr += len;
+
+    // Read Server DH Key
+    len = ntohl(*((uint32_t*)(contents + curr)));
+    curr += 4;
+    temp.assign(contents+curr, contents+curr+len);
+    server_dh_pubkey = bytes2DHKey(temp);
+    curr += len;
+
+    // Skip over signature type
+    curr += 4;
+    len = ntohl(*((uint32_t*)(contents + curr)));
+    curr += 4 + len;
+
+    // Read EdDSA public key
+    len = ntohl(*((uint32_t*)(contents + curr)));
+    curr += 4;
+    temp.assign(contents+curr, contents+curr+len);
+    print_hex(temp, temp.size());
+
+
+
+}
+
+
 
 SSHClient::~SSHClient(){
+
+    //close(sockFD);
+
 }

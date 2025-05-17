@@ -6,7 +6,7 @@ int main() {
     SSHClient client;
 
     try {
-        client = SSHClient("tuxworld.usask.ca");
+        client = SSHClient("tux6.usask.ca");
     }
     catch (const std::exception& e) {
         std::cerr << "Construction failed: " << e.what() << "\n";
