@@ -41,3 +41,22 @@ void curve25519PubKey2Bytes(EVP_PKEY* keyPair, std::vector<uint8_t>& keyBytes) {
 }
 
 
+EVP_PKEY* curve25519Bytes2PubKey(std::vector<uint8_t>& keyBytes) {
+    
+    EVP_PKEY* key = nullptr;
+
+    key = EVP_PKEY_new_raw_public_key(EVP_PKEY_X25519,
+                                      nullptr,
+                                      keyBytes.data(),
+                                      keyBytes.size());
+
+    if (!key) {
+        ERR_print_errors_fp(stderr);
+        abort();
+    }
+
+    return key;
+
+}
+
+
