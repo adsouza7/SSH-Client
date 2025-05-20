@@ -41,6 +41,7 @@ EVP_PKEY* generateDHGroup14KeyPair() {
 void DHGroup14PubKey2Bytes(EVP_PKEY* keyPair, std::vector<uint8_t>& keyBytes) {
 
     BIGNUM* pub_key = nullptr;
+    std::vector<uint8_t> test;
 
     if (EVP_PKEY_get_bn_param(keyPair, OSSL_PKEY_PARAM_PUB_KEY, &pub_key) != 1) {
         ERR_print_errors_fp(stderr);
@@ -53,6 +54,33 @@ void DHGroup14PubKey2Bytes(EVP_PKEY* keyPair, std::vector<uint8_t>& keyBytes) {
     if (BN_bn2bin(pub_key, keyBytes.data()) <= 0) {
         std::cerr << "Error converting public key to bytes" << std::endl;
     }
-
+    
     BN_free(pub_key);
 }
+
+
+EVP_PKEY* DHGroup14Bytes2PubKey(std::vector<uint8_t>& keyBytes) {
+    
+    //////////////// BYTE ORDER MAY BE SUS ///////////////
+    /////////// reverse keyBytes if so ///////////////////
+
+    OSSL_PARAM params[] = {
+        OSSL_PARAM_construct_utf8_string("group", "modp_2048", 0),
+        OSSL_PARAM_BN("pub", keyBytes.data(), keyBytes.size()),
+        OSSL_PARAM_END
+    };
+
+    EVP_PKEY *key = nullptr;
+
+    EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new_from_name(nullptr, "DH", nullptr);
+    if (!ctx || (EVP_PKEY_fromdata_init(ctx) <= 0)
+        || (EVP_PKEY_fromdata(ctx, &key, EVP_PKEY_PUBLIC_KEY, params) <= 0)) {
+        
+        ERR_print_errors_fp(stderr);
+        abort();
+    }
+
+    return key;
+
+}
+

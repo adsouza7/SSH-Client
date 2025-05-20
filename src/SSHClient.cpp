@@ -18,7 +18,7 @@ const std::string SERVER_PORT = "22";
 const std::string IDString = "SSH-2.0-AaronClient\r\n";
 
 // Supported Algorithms
-const std::string kex_algos = "curve25519-sha256,diffie-hellman-group14-sha256";
+const std::string kex_algos = "acurve25519-sha256,diffie-hellman-group14-sha256";
 const std::string server_host_key_algos = "ssh-ed25519,rsa-sha2-256";
 const std::string encryption_ctos = "aes128-ctr,aes256-ctr";
 const std::string encryption_stoc = "aes128-ctr,aes256-ctr";
@@ -139,7 +139,7 @@ Packet* SSHClient::receivePacket() {
 
 int SSHClient::serverConnect() {
 
-    std::vector<uint8_t> buffer(32768);
+    std::vector<uint8_t> buffer(255);
     int bytesRecv = 0;
 
     // ID String Exchange
@@ -259,6 +259,7 @@ void SSHClient::resolve_crypto(std::string& kex, std::string& server_key,
     else if (kex == "diffie-hellman-group14-sha256") {
         DHKeyGen  = generateDHGroup14KeyPair;
         DHKey2Bytes = DHGroup14PubKey2Bytes;
+        bytes2DHKey = DHGroup14Bytes2PubKey;
     }
     else {
         throw std::runtime_error("SSHClient::resolve_crypto() = Invalid KEX algorithm");
@@ -331,7 +332,10 @@ void SSHClient::parse_dh_kex_reply(Packet* packet) {
     len = ntohl(*((uint32_t*)(contents + curr)));
     curr += 4;
     temp.assign(contents+curr, contents+curr+len);
+    //print_hex(temp, temp.size());
     server_dh_pubkey = bytes2DHKey(temp);
+    DHKey2Bytes(server_dh_pubkey, temp);
+    //print_hex(temp, temp.size());
     curr += len;
 
     // Skip over signature type
@@ -343,7 +347,7 @@ void SSHClient::parse_dh_kex_reply(Packet* packet) {
     len = ntohl(*((uint32_t*)(contents + curr)));
     curr += 4;
     temp.assign(contents+curr, contents+curr+len);
-    print_hex(temp, temp.size());
+    //print_hex(temp, temp.size());
 
 
 
