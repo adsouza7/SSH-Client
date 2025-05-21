@@ -18,7 +18,7 @@ const std::string SERVER_PORT = "22";
 const std::string IDString = "SSH-2.0-AaronClient\r\n";
 
 // Supported Algorithms
-const std::string kex_algos = "acurve25519-sha256,diffie-hellman-group14-sha256";
+const std::string kex_algos = "1curve25519-sha256,diffie-hellman-group14-sha256";
 const std::string server_host_key_algos = "ssh-ed25519,rsa-sha2-256";
 const std::string encryption_ctos = "aes128-ctr,aes256-ctr";
 const std::string encryption_stoc = "aes128-ctr,aes256-ctr";
@@ -173,6 +173,9 @@ int SSHClient::serverConnect() {
     parse_dh_kex_reply(recvPacket);
     delete recvPacket;
 
+    DeriveSharedSecret(client_dh_keypair, server_dh_pubkey, shared_secret_K);
+    print_hex(shared_secret_K, shared_secret_K.size());
+
     return 0;
 }
 
@@ -324,18 +327,16 @@ void SSHClient::parse_dh_kex_reply(Packet* packet) {
     // Read EdDSA public key
     len = ntohl(*((uint32_t*)(contents + curr)));
     curr += 4;
-    temp.assign(contents+curr, contents+curr+len);
-    //print_hex(temp, temp.size());
+    server_host_key.assign(contents+curr, contents+curr+len);
     curr += len;
 
     // Read Server DH Key
     len = ntohl(*((uint32_t*)(contents + curr)));
     curr += 4;
-    temp.assign(contents+curr, contents+curr+len);
-    //print_hex(temp, temp.size());
-    server_dh_pubkey = bytes2DHKey(temp);
+    dh_client_f.assign(contents+curr, contents+curr+len);
+    server_dh_pubkey = bytes2DHKey(dh_client_f);
     DHKey2Bytes(server_dh_pubkey, temp);
-    //print_hex(temp, temp.size());
+    print_hex(temp, temp.size());
     curr += len;
 
     // Skip over signature type
@@ -343,13 +344,11 @@ void SSHClient::parse_dh_kex_reply(Packet* packet) {
     len = ntohl(*((uint32_t*)(contents + curr)));
     curr += 4 + len;
 
-    // Read EdDSA public key
+    // Read signature
     len = ntohl(*((uint32_t*)(contents + curr)));
     curr += 4;
-    temp.assign(contents+curr, contents+curr+len);
+    server_signature.assign(contents+curr, contents+curr+len);
     //print_hex(temp, temp.size());
-
-
 
 }
 
