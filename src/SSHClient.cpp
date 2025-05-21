@@ -336,11 +336,8 @@ void SSHClient::parse_dh_kex_reply(Packet* packet) {
     // Read Server DH Key
     len = ntohl(*((uint32_t*)(contents + curr)));
     curr += 4;
-    dh_client_f.assign(contents+curr, contents+curr+len);
-    print_hex(dh_client_f, dh_client_f.size());
-    server_dh_pubkey = bytes2DHKey(dh_client_f);
-    DHKey2Bytes(server_dh_pubkey, temp);
-    print_hex(temp, temp.size());
+    temp.assign(contents+curr, contents+curr+len);
+    server_dh_pubkey = bytes2DHKey(temp);
     curr += len;
 
     // Skip over signature type
