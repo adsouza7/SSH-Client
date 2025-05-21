@@ -64,9 +64,12 @@ EVP_PKEY* DHGroup14Bytes2PubKey(std::vector<uint8_t>& keyBytes) {
     //////////////// BYTE ORDER MAY BE SUS ///////////////
     /////////// reverse keyBytes if so ///////////////////
 
+    std::vector<uint8_t> temp(keyBytes.end()-256, keyBytes.end());
+    std::reverse(temp.begin(), temp.end());
+    
     OSSL_PARAM params[] = {
         OSSL_PARAM_construct_utf8_string("group", "modp_2048", 0),
-        OSSL_PARAM_construct_BN("pub", keyBytes.data(), keyBytes.size()),
+        OSSL_PARAM_construct_BN("pub", temp.data(), temp.size()),
         OSSL_PARAM_END
     };
 
@@ -79,6 +82,9 @@ EVP_PKEY* DHGroup14Bytes2PubKey(std::vector<uint8_t>& keyBytes) {
         ERR_print_errors_fp(stderr);
         abort();
     }
+
+    BIO *out = BIO_new_fp(stdout, BIO_NOCLOSE);
+    EVP_PKEY_print_public(out, key, 0, NULL);
 
     return key;
 

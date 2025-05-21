@@ -173,7 +173,10 @@ int SSHClient::serverConnect() {
     parse_dh_kex_reply(recvPacket);
     delete recvPacket;
 
-    DeriveSharedSecret(client_dh_keypair, server_dh_pubkey, shared_secret_K);
+    if (DeriveSharedSecret(client_dh_keypair, server_dh_pubkey, shared_secret_K)
+    < 0) {
+        std::cout << "ERROR" << std::endl;
+    }
     print_hex(shared_secret_K, shared_secret_K.size());
 
     return 0;
@@ -334,6 +337,7 @@ void SSHClient::parse_dh_kex_reply(Packet* packet) {
     len = ntohl(*((uint32_t*)(contents + curr)));
     curr += 4;
     dh_client_f.assign(contents+curr, contents+curr+len);
+    print_hex(dh_client_f, dh_client_f.size());
     server_dh_pubkey = bytes2DHKey(dh_client_f);
     DHKey2Bytes(server_dh_pubkey, temp);
     print_hex(temp, temp.size());
