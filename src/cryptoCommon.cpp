@@ -40,3 +40,39 @@ int DeriveSharedSecret(EVP_PKEY* keyPair, EVP_PKEY* peerKey,
         return -1;
 
 }
+
+
+int ComputeHash(std::vector<uint8_t>& input, std::vector<uint8_t>& output) {
+
+    unsigned int buffLen = 0;
+
+    EVP_MD_CTX* mdctx = EVP_MD_CTX_new();
+    if (!mdctx) {
+        std::cerr << "Message digest create failed" << std::endl;
+        return -1;
+    }
+
+    if (!EVP_DigestInit_ex2(mdctx, EVP_sha256(), nullptr)) {
+        std::cerr << "Message digest initialization failed" << std::endl;
+        EVP_MD_CTX_free(mdctx);
+        return -1;
+    }
+
+    if (!EVP_DigestUpdate(mdctx, input.data(), input.size())) {
+        std::cerr << "Message digest update failed" << std::endl;
+        EVP_MD_CTX_free(mdctx);
+        return -1;
+    }
+
+    output.resize(EVP_MAX_MD_SIZE);
+    if (!EVP_DigestFinal_ex(mdctx, output.data(), &buffLen)) {
+        std::cerr << "Message digest finalization failed" << std::endl;
+        EVP_MD_CTX_free(mdctx);
+        return -1;
+    }
+    output.resize(buffLen);
+
+    EVP_MD_CTX_free(mdctx);
+
+    return 0;
+}

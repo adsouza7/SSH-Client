@@ -177,7 +177,9 @@ int SSHClient::serverConnect() {
     < 0) {
         std::cout << "ERROR" << std::endl;
     }
-    print_hex(shared_secret_K, shared_secret_K.size());
+    //print_hex(shared_secret_K, shared_secret_K.size());
+
+    generate_exchange_hash();
 
     return 0;
 }
@@ -353,6 +355,30 @@ void SSHClient::parse_dh_kex_reply(Packet* packet) {
 
 }
 
+
+void SSHClient::generate_exchange_hash() {
+    
+    Packet temp;
+    std::vector<uint8_t> tempBytes;
+
+    temp.addString(clientIDString.substr(0, clientIDString.length() - 2));
+    temp.addString(serverIDString.substr(0, serverIDString.length() - 2));
+    temp.addString(client_kexinit->buffer);
+    temp.addString(server_kexinit->buffer);
+
+    DHKey2Bytes(client_dh_keypair, tempBytes);
+    temp.addMPInt(tempBytes);
+
+    DHKey2Bytes(server_dh_pubkey, tempBytes);
+    temp.addMPInt(tempBytes);
+
+    temp.addMPInt(shared_secret_K);
+
+    ComputeHash(temp.buffer, exchange_hash_H);
+
+    print_hex(exchange_hash_H, exchange_hash_H.size());
+
+}
 
 
 SSHClient::~SSHClient(){

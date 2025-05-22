@@ -73,10 +73,11 @@ class SSHClient {
         EVP_PKEY* client_dh_keypair = nullptr;
         EVP_PKEY* server_dh_pubkey = nullptr;
 
-        // Key Gen Function Pointer
+        // Crypto Pointers
         EVP_PKEY* (*DHKeyGen)();
         void (*DHKey2Bytes)(EVP_PKEY*, std::vector<uint8_t>&);
         EVP_PKEY* (*bytes2DHKey)(std::vector<uint8_t>&);
+        EVP_MD* hashFN;
 
 
         void wrap_packet(std::vector<uint8_t>& packet);
@@ -88,6 +89,7 @@ class SSHClient {
 
         void build_dh_kexinit(std::vector<uint8_t>& buffer);
         void parse_dh_kex_reply(Packet* packet);
+        void generate_exchange_hash();
 
         
 };
