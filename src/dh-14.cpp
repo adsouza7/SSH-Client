@@ -54,6 +54,10 @@ void DHGroup14PubKey2Bytes(EVP_PKEY* keyPair, std::vector<uint8_t>& keyBytes) {
     if (BN_bn2bin(pub_key, keyBytes.data()) <= 0) {
         std::cerr << "Error converting public key to bytes" << std::endl;
     }
+
+    if (keyBytes[0] >= 0x80) {
+       keyBytes.insert(keyBytes.begin(), 0); 
+    }
     
     BN_free(pub_key);
 }

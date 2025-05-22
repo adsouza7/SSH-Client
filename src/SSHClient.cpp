@@ -18,7 +18,7 @@ const std::string SERVER_PORT = "22";
 const std::string IDString = "SSH-2.0-AaronClient\r\n";
 
 // Supported Algorithms
-const std::string kex_algos = "1curve25519-sha256,diffie-hellman-group14-sha256";
+const std::string kex_algos = "curve25519-sha256,diffie-hellman-group14-sha256";
 const std::string server_host_key_algos = "ssh-ed25519,rsa-sha2-256";
 const std::string encryption_ctos = "aes128-ctr,aes256-ctr";
 const std::string encryption_stoc = "aes128-ctr,aes256-ctr";
@@ -379,7 +379,6 @@ void SSHClient::generate_exchange_hash() {
     ed25519PubKey2Bytes(server_host_key, tempBytes);
     temp2.addString(tempBytes);
     temp.addString(temp2.buffer);
-
 
     DHKey2Bytes(client_dh_keypair, tempBytes);
     temp.addString(tempBytes);
