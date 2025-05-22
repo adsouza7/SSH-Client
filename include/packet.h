@@ -21,6 +21,7 @@ struct Packet {
     void addByte(uint8_t byte);
     void addWord(uint32_t word);
     void addMPInt(std::vector<uint8_t>& byteArr);
+    void addRawString(const std::string& str);
 
     template <typename Container>
     void addString(const Container& data) {

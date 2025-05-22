@@ -16,7 +16,7 @@ int DeriveSharedSecret(EVP_PKEY* keyPair, EVP_PKEY* peerKey,
         goto error;
     }
 
-    std::cout << EVP_PKEY_derive_set_peer(ctx, peerKey) << std::endl;
+    EVP_PKEY_derive_set_peer(ctx, peerKey);
 
     /* Get buffer len */
     size_t bufferLen;

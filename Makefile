@@ -17,7 +17,8 @@ $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
 $(BIN): $(BUILD_DIR)SSHClient.o $(BUILD_DIR)ssh.o $(BUILD_DIR)packet.o\
-        $(BUILD_DIR)dh-14.o $(BUILD_DIR)curve25519.o $(BUILD_DIR)cryptoCommon.o
+        $(BUILD_DIR)dh-14.o $(BUILD_DIR)X25519.o $(BUILD_DIR)cryptoCommon.o\
+        $(BUILD_DIR)ed25519.o
 	$(CXX) -o $(BIN) $^ $(LDFLAGS)
 
 $(BUILD_DIR)ssh.o: src/ssh.cpp | $(BUILD_DIR)
@@ -35,8 +36,11 @@ $(BUILD_DIR)packet.o: src/packet.cpp | $(BUILD_DIR)
 $(BUILD_DIR)dh-14.o: src/dh-14.cpp | $(BUILD_DIR)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) src/dh-14.cpp -o $@
 
-$(BUILD_DIR)curve25519.o: src/curve25519.cpp | $(BUILD_DIR)
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) src/curve25519.cpp -o $@
+$(BUILD_DIR)X25519.o: src/X25519.cpp | $(BUILD_DIR)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) src/X25519.cpp -o $@
+
+$(BUILD_DIR)ed25519.o: src/ed25519.cpp | $(BUILD_DIR)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) src/ed25519.cpp -o $@
 
 $(BUILD_DIR)cryptoCommon.o: src/cryptoCommon.cpp | $(BUILD_DIR)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) src/cryptoCommon.cpp -o $@

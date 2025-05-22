@@ -58,7 +58,7 @@ class SSHClient {
         std::vector<uint8_t> exchange_hash_H;
 
         // Server Host Key
-        std::vector<uint8_t> server_host_key;
+        EVP_PKEY* server_host_key = nullptr;
         std::vector<uint8_t> server_signature;
 
         // Derived Session Keys
@@ -78,6 +78,8 @@ class SSHClient {
         void (*DHKey2Bytes)(EVP_PKEY*, std::vector<uint8_t>&);
         EVP_PKEY* (*bytes2DHKey)(std::vector<uint8_t>&);
         EVP_MD* hashFN;
+        int (*VerifySignature)(EVP_PKEY* key, std::vector<uint8_t>& hash,
+            std::vector<uint8_t>& signature);
 
 
         void wrap_packet(std::vector<uint8_t>& packet);

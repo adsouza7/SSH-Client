@@ -181,6 +181,9 @@ int SSHClient::serverConnect() {
 
     generate_exchange_hash();
 
+    std::cout << VerifySignature(server_host_key, exchange_hash_H,
+    server_signature) << std::endl;
+
     return 0;
 }
 
@@ -260,9 +263,9 @@ void SSHClient::resolve_crypto(std::string& kex, std::string& server_key,
     
     // Resolve key exhange algorithms
     if (kex == "curve25519-sha256") {
-        DHKeyGen = generateCurve25519KeyPair;
-        DHKey2Bytes = curve25519PubKey2Bytes;
-        bytes2DHKey = curve25519Bytes2PubKey;
+        DHKeyGen = generateX25519KeyPair;
+        DHKey2Bytes = X25519PubKey2Bytes;
+        bytes2DHKey = X25519Bytes2PubKey;
     }
     else if (kex == "diffie-hellman-group14-sha256") {
         DHKeyGen  = generateDHGroup14KeyPair;
@@ -274,6 +277,7 @@ void SSHClient::resolve_crypto(std::string& kex, std::string& server_key,
     }
 
     // TODO: Resolve server host key algorithms
+    VerifySignature = ed25519VerifySign;
     // TODO: Resolve encryption algorithms
     // TODO: Resolve MAC algorithms
 
@@ -332,7 +336,8 @@ void SSHClient::parse_dh_kex_reply(Packet* packet) {
     // Read EdDSA public key
     len = ntohl(*((uint32_t*)(contents + curr)));
     curr += 4;
-    server_host_key.assign(contents+curr, contents+curr+len);
+    temp.assign(contents+curr, contents+curr+len);
+    server_host_key = ed25519Bytes2PubKey(temp);;
     curr += len;
 
     // Read Server DH Key
@@ -351,32 +356,42 @@ void SSHClient::parse_dh_kex_reply(Packet* packet) {
     len = ntohl(*((uint32_t*)(contents + curr)));
     curr += 4;
     server_signature.assign(contents+curr, contents+curr+len);
-    //print_hex(temp, temp.size());
+    //print_hex(server_signature, server_signature.size());
 
 }
 
 
 void SSHClient::generate_exchange_hash() {
     
-    Packet temp;
+    Packet temp, temp2;
     std::vector<uint8_t> tempBytes;
 
-    temp.addString(clientIDString.substr(0, clientIDString.length() - 2));
+    temp.addString(IDString.substr(0, IDString.length() - 2));
+
+    print_hex(temp.buffer, temp.buffer.size());
+
     temp.addString(serverIDString.substr(0, serverIDString.length() - 2));
     temp.addString(client_kexinit->buffer);
     temp.addString(server_kexinit->buffer);
 
+    std::string s = "ssh-ed25519";
+    temp2.addString(s);
+    ed25519PubKey2Bytes(server_host_key, tempBytes);
+    temp2.addString(tempBytes);
+    temp.addString(temp2.buffer);
+
+
     DHKey2Bytes(client_dh_keypair, tempBytes);
-    temp.addMPInt(tempBytes);
+    temp.addString(tempBytes);
 
     DHKey2Bytes(server_dh_pubkey, tempBytes);
-    temp.addMPInt(tempBytes);
+    temp.addString(tempBytes);
 
     temp.addMPInt(shared_secret_K);
 
-    ComputeHash(temp.buffer, exchange_hash_H);
+    print_hex(temp.buffer, temp.buffer.size());
 
-    print_hex(exchange_hash_H, exchange_hash_H.size());
+    ComputeHash(temp.buffer, exchange_hash_H);
 
 }
 

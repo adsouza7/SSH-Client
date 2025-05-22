@@ -24,6 +24,11 @@ void Packet::addMPInt(std::vector<uint8_t>& byteArr) {
     buffer.insert(buffer.end(), byteArr.begin(), byteArr.end());
 }
 
+
+void Packet::addRawString(const std::string& str) {
+    buffer.insert(buffer.end(), str.begin(), str.end());
+}
+
 uint8_t Packet::getMessageCode() {
     return buffer[0];
 }
