@@ -72,7 +72,7 @@ EVP_PKEY* DHGroup14Bytes2PubKey(std::vector<uint8_t>& keyBytes) {
     std::reverse(temp.begin(), temp.end());
     
     OSSL_PARAM params[] = {
-        OSSL_PARAM_construct_utf8_string("group", "modp_2048", 0),
+        OSSL_PARAM_construct_utf8_string("group", (char*)"modp_2048", 0),
         OSSL_PARAM_construct_BN("pub", temp.data(), temp.size()),
         OSSL_PARAM_END
     };
