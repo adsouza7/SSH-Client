@@ -20,6 +20,8 @@ int ed25519VerifySign(EVP_PKEY* key, std::vector<uint8_t>& hash,
     std::vector<uint8_t>& signature);
 
 EVP_PKEY* RSABytes2PubKey(std::vector<uint8_t>& keyBytes);
+int RSAVerifySign(EVP_PKEY* key, std::vector<uint8_t>& hash,
+    std::vector<uint8_t>& signature);
 
 int DeriveSharedSecret(EVP_PKEY* keyPair, EVP_PKEY* peerKey,
     std::vector<uint8_t>& secretBytes); 

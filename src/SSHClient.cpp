@@ -19,7 +19,7 @@ const std::string IDString = "SSH-2.0-AaronClient\r\n";
 
 // Supported Algorithms
 const std::string kex_algos = "curve25519-sha256,diffie-hellman-group14-sha256";
-const std::string server_host_key_algos = "ssh-ed25519,rsa-sha2-256";
+const std::string server_host_key_algos = "1ssh-ed25519,rsa-sha2-256";
 const std::string encryption_ctos = "aes128-ctr,aes256-ctr";
 const std::string encryption_stoc = "aes128-ctr,aes256-ctr";
 const std::string mac_ctos = "hmac-sha2-256,hmac-sha1";
@@ -283,6 +283,7 @@ void SSHClient::resolve_crypto(std::string& kex, std::string& server_key,
     }
     else if (server_key == "rsa-sha2-256") {
         ExtractServerKey = RSABytes2PubKey;
+        VerifySignature = RSAVerifySign;
     }
     else {
         throw std::runtime_error("SSHClient::resolve_crypto() = Invalid Server Host algorithm");

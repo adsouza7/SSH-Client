@@ -58,29 +58,34 @@ EVP_PKEY* RSABytes2PubKey(std::vector<uint8_t>& keyBytes) {
 
 }
 
-/*
-int ed25519VerifySign(EVP_PKEY* key, std::vector<uint8_t>& hash,
+
+int RSAVerifySign(EVP_PKEY* key, std::vector<uint8_t>& hash,
     std::vector<uint8_t>& signature) {
 
     int ret = -1;
 
-    EVP_MD_CTX* mdctx = EVP_MD_CTX_new();
-    if (!mdctx) {
+    EVP_MD_CTX *mdctx = EVP_MD_CTX_new();
+    if (!mdctx) { 
         ERR_print_errors_fp(stderr);
         return -1;
     }
 
-    if (EVP_DigestVerifyInit(mdctx, nullptr, nullptr, nullptr, key) != 1) {
+    if (EVP_DigestVerifyInit(mdctx, NULL, EVP_sha256(), NULL, key) != 1) { 
+        ERR_print_errors_fp(stderr);
         EVP_MD_CTX_free(mdctx);
-        ERR_print_errors_fp(stderr);
         return -1;
     }
 
-    ret = EVP_DigestVerify(mdctx, signature.data(), signature.size(),
-        hash.data(), hash.size());
+    // Hash the exchange hash internally
+    if (EVP_DigestVerifyUpdate(mdctx, hash.data(), hash.size()) != 1) { 
+        ERR_print_errors_fp(stderr);
+        EVP_MD_CTX_free(mdctx);
+        return -1;
+    }
 
+    ret = EVP_DigestVerifyFinal(mdctx, signature.data(), signature.size());
+    
     EVP_MD_CTX_free(mdctx);
     return ret;
-
 }
-*/
+
