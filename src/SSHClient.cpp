@@ -277,7 +277,16 @@ void SSHClient::resolve_crypto(std::string& kex, std::string& server_key,
     }
 
     // TODO: Resolve server host key algorithms
-    VerifySignature = ed25519VerifySign;
+    if (server_key == "ssh-ed25519") {
+        ExtractServerKey = ed25519Bytes2PubKey;
+        VerifySignature = ed25519VerifySign;
+    }
+    else if (server_key == "rsa-sha2-256") {
+        ExtractServerKey = RSABytes2PubKey;
+    }
+    else {
+        throw std::runtime_error("SSHClient::resolve_crypto() = Invalid Server Host algorithm");
+    }
     // TODO: Resolve encryption algorithms
     // TODO: Resolve MAC algorithms
 
@@ -327,17 +336,13 @@ void SSHClient::parse_dh_kex_reply(Packet* packet) {
         throw std::runtime_error("SSHClient::parse_kexinit() = Invalid msg type");
     }
 
-    int curr = 5;
+    int curr = 1;
 
     // Skip over host key type
     uint32_t len = ntohl(*((uint32_t*)(contents + curr)));
-    curr += 4 + len;
-
-    // Read EdDSA public key
-    len = ntohl(*((uint32_t*)(contents + curr)));
     curr += 4;
-    temp.assign(contents+curr, contents+curr+len);
-    server_host_key = ed25519Bytes2PubKey(temp);;
+    serverKeyBytes.assign(contents+curr, contents+curr+len);
+    server_host_key = ExtractServerKey(serverKeyBytes);
     curr += len;
 
     // Read Server DH Key
@@ -368,17 +373,13 @@ void SSHClient::generate_exchange_hash() {
 
     temp.addString(IDString.substr(0, IDString.length() - 2));
 
-    print_hex(temp.buffer, temp.buffer.size());
+    //print_hex(temp.buffer, temp.buffer.size());
 
     temp.addString(serverIDString.substr(0, serverIDString.length() - 2));
     temp.addString(client_kexinit->buffer);
     temp.addString(server_kexinit->buffer);
 
-    std::string s = "ssh-ed25519";
-    temp2.addString(s);
-    ed25519PubKey2Bytes(server_host_key, tempBytes);
-    temp2.addString(tempBytes);
-    temp.addString(temp2.buffer);
+    temp.addString(serverKeyBytes);
 
     DHKey2Bytes(client_dh_keypair, tempBytes);
     temp.addString(tempBytes);
@@ -388,7 +389,7 @@ void SSHClient::generate_exchange_hash() {
 
     temp.addMPInt(shared_secret_K);
 
-    print_hex(temp.buffer, temp.buffer.size());
+    //print_hex(temp.buffer, temp.buffer.size());
 
     ComputeHash(temp.buffer, exchange_hash_H);
 

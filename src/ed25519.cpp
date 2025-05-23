@@ -3,7 +3,10 @@
 #include <openssl/core_names.h>
 #include <openssl/params.h>
 #include <vector>
+#include <string>
 #include <iostream>
+#include <arpa/inet.h>
+
 
 void ed25519PubKey2Bytes(EVP_PKEY* key, std::vector<uint8_t>& keyBytes) {
 
@@ -22,16 +25,37 @@ void ed25519PubKey2Bytes(EVP_PKEY* key, std::vector<uint8_t>& keyBytes) {
 EVP_PKEY* ed25519Bytes2PubKey(std::vector<uint8_t>& keyBytes) {
     
     EVP_PKEY* key = nullptr;
+    uint8_t* data = keyBytes.data();
+    int len = 0;
+
+    // Parse Key type
+    len = ntohl(*(uint32_t*)(data));
+    data += 4;
+    std::string type((const char*)(data), len);
+
+    if (type != "ssh-ed25519") {
+        std::cerr << "Host key type mismatch" << std::endl;
+        abort();
+    }
+    data += len;
+
+    // Parse pub bytes
+    len = ntohl(*(uint32_t*)(data));
+    data += 4;
 
     key = EVP_PKEY_new_raw_public_key(EVP_PKEY_ED25519,
                                       nullptr,
-                                      keyBytes.data(),
-                                      keyBytes.size());
+                                      data,
+                                      len);
 
     if (!key) {
         ERR_print_errors_fp(stderr);
         abort();
     }
+
+    BIO *out = BIO_new_fp(stdout, BIO_NOCLOSE);
+    EVP_PKEY_print_public(out, key, 0, nullptr);
+
 
     return key;
 
