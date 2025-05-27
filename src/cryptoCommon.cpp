@@ -76,3 +76,74 @@ int ComputeHash(std::vector<uint8_t>& input, std::vector<uint8_t>& output) {
 
     return 0;
 }
+
+
+int GenerateSessionKey(std::vector<uint8_t>& K, std::vector<uint8_t>& H,
+    uint8_t keyID, std::vector<uint8_t>& keyOutput, uint16_t keySize) {
+
+    std::vector<uint8_t> temp;
+    int buffLen = 0;
+    
+    EVP_MD_CTX* mdctx = EVP_MD_CTX_new();
+    if (!mdctx) {
+        std::cerr << "Message digest create failed" << std::endl;
+        return -1;
+    }
+
+    while (keyOutput.size() < keySize) {
+
+        if (!EVP_DigestInit_ex2(mdctx, EVP_sha256(), nullptr)) {
+            std::cerr << "Message digest initialization failed" << std::endl;
+            EVP_MD_CTX_free(mdctx);
+            return -1;
+        }
+
+        if (!EVP_DigestUpdate(mdctx, K.data(), K.size())) {
+            std::cerr << "Message digest update failed" << std::endl;
+            EVP_MD_CTX_free(mdctx);
+            return -1;
+        }
+
+        if (!EVP_DigestUpdate(mdctx, H.data(), H.size())) {
+            std::cerr << "Message digest update failed" << std::endl;
+            EVP_MD_CTX_free(mdctx);
+            return -1;
+        }
+
+        if (!EVP_DigestUpdate(mdctx, &keyID, 1)) {
+            std::cerr << "Message digest update failed" << std::endl;
+            EVP_MD_CTX_free(mdctx);
+            return -1;
+        }
+
+        if (!EVP_DigestUpdate(mdctx, H.data(), H.size())) {
+            std::cerr << "Message digest update failed" << std::endl;
+            EVP_MD_CTX_free(mdctx);
+            return -1;
+        }
+
+        if (!temp.empty()) {
+            if (!EVP_DigestUpdate(mdctx, temp.data(), temp.size())) {
+                std::cerr << "Message digest update failed" << std::endl;
+                EVP_MD_CTX_free(mdctx);
+                return -1;
+            }    
+        }
+
+        temp.resize(EVP_MAX_MD_SIZE);
+        if (!EVP_DigestFinal_ex(mdctx, temp.data(), &buffLen)) {
+            std::cerr << "Message digest finalization failed" << std::endl;
+            EVP_MD_CTX_free(mdctx);
+            return -1;
+        }
+        temp.resize(buffLen);
+
+        keyOutput.insert(keyOutput.end(), temp.begin(), temp.end());
+    }
+
+    if (keyOutput.size() > keySize) {
+        keyOutput.resize(keySize);
+    }
+
+    return 0;
+}
