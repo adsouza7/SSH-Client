@@ -26,4 +26,6 @@ int RSAVerifySign(EVP_PKEY* key, std::vector<uint8_t>& hash,
 int DeriveSharedSecret(EVP_PKEY* keyPair, EVP_PKEY* peerKey,
     std::vector<uint8_t>& secretBytes); 
 int ComputeHash(std::vector<uint8_t>& input, std::vector<uint8_t>& output); 
+int GenerateSessionKey(std::vector<uint8_t>& K, std::vector<uint8_t>& H,
+    uint8_t keyID, std::vector<uint8_t>& keyOutput, uint16_t keySize); 
 #endif

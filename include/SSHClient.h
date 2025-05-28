@@ -63,12 +63,16 @@ class SSHClient {
         std::vector<uint8_t> server_signature;
 
         // Derived Session Keys
-        std::vector<uint8_t> key_iv_c_to_s;
-        std::vector<uint8_t> key_iv_s_to_c; 
-        std::vector<uint8_t> key_enc_c_to_s;
-        std::vector<uint8_t> key_enc_s_to_c;
-        std::vector<uint8_t> key_mac_c_to_s;
-        std::vector<uint8_t> key_mac_s_to_c;
+        uint16_t IVKeySize;
+        uint16_t encKeySize;
+        uint16_t macKeySize;
+
+        std::vector<uint8_t> IVKeyCtoS;
+        std::vector<uint8_t> IVKeyStoC; 
+        std::vector<uint8_t> encKeyCtoS;
+        std::vector<uint8_t> encKeyStoC;
+        std::vector<uint8_t> macKeyCtoS;
+        std::vector<uint8_t> macKeyStoC;
 
         // Crypto Objects
         EVP_PKEY* client_dh_keypair = nullptr;
@@ -78,7 +82,6 @@ class SSHClient {
         EVP_PKEY* (*DHKeyGen)();
         void (*DHKey2Bytes)(EVP_PKEY*, std::vector<uint8_t>&);
         EVP_PKEY* (*bytes2DHKey)(std::vector<uint8_t>&);
-        EVP_MD* hashFN; 
         EVP_PKEY* (*ExtractServerKey)(std::vector<uint8_t>&);
         int (*VerifySignature)(EVP_PKEY* key, std::vector<uint8_t>& hash,
             std::vector<uint8_t>& signature);
@@ -94,7 +97,7 @@ class SSHClient {
         void build_dh_kexinit(std::vector<uint8_t>& buffer);
         void parse_dh_kex_reply(Packet* packet);
         void generate_exchange_hash();
-
+        void generate_session_keys();
         
 };
 

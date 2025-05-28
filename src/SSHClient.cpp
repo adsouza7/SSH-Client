@@ -19,8 +19,8 @@ const std::string IDString = "SSH-2.0-AaronClient\r\n";
 
 // Supported Algorithms
 const std::string kex_algos = "curve25519-sha256,diffie-hellman-group14-sha256";
-const std::string server_host_key_algos = "1ssh-ed25519,rsa-sha2-256";
-const std::string encryption_ctos = "aes128-ctr,aes256-ctr";
+const std::string server_host_key_algos = "ssh-ed25519,rsa-sha2-256";
+const std::string encryption_ctos = "saes128-ctr,aes256-ctr";
 const std::string encryption_stoc = "aes128-ctr,aes256-ctr";
 const std::string mac_ctos = "hmac-sha2-256,hmac-sha1";
 const std::string mac_stoc = "hmac-sha2-256,hmac-sha1";
@@ -184,6 +184,8 @@ int SSHClient::serverConnect() {
     std::cout << VerifySignature(server_host_key, exchange_hash_H,
     server_signature) << std::endl;
 
+    generate_session_keys();
+
     return 0;
 }
 
@@ -288,18 +290,39 @@ void SSHClient::resolve_crypto(std::string& kex, std::string& server_key,
     else {
         throw std::runtime_error("SSHClient::resolve_crypto() = Invalid Server Host algorithm");
     }
+
     // TODO: Resolve encryption algorithms
+
+    if (encryption == "aes128-ctr") {
+        IVKeySize = 16;
+        encKeySize = 16;
+    }
+    else if (encryption == "aes256-ctr") {
+        IVKeySize = 16;
+        encKeySize = 32;
+    }
+    else {
+        throw std::runtime_error("SSHClient::resolve_crypto() = Invalid encryption algorithm");
+    }
+
+
     // TODO: Resolve MAC algorithms
+    if (mac == "hmac-sha2-256") {
+        macKeySize = 32;
+    }
+    else if (encryption == "hmac-sha1") {
+        macKeySize = 20;
+    }
+    else {
+        throw std::runtime_error("SSHClient::resolve_crypto() = Invalid MAC algorithm");
+    }
+
 
     std::cout << kex << " " << server_key << " " << encryption << " " << mac
     << " "  << compression << std::endl; 
-
-
-
 }
 
 void SSHClient::build_dh_kexinit(std::vector<uint8_t>& packet) {
-    
     
     client_dh_keypair = DHKeyGen();
     if (!client_dh_keypair) {
@@ -396,6 +419,46 @@ void SSHClient::generate_exchange_hash() {
 
 }
 
+
+void SSHClient::generate_session_keys() {
+
+    
+    // Workaround to easily encode secret key as mpint
+    Packet K_bytes;
+    int ret;
+    K_bytes.addMPInt(shared_secret_K);
+
+    ret = GenerateSessionKey(K_bytes.buffer, exchange_hash_H, 'A', IVKeyCtoS, IVKeySize);
+    if (ret) {
+        throw std::runtime_error("Error: Failed to generate IV Key C to S");
+    }
+
+    ret = GenerateSessionKey(K_bytes.buffer, exchange_hash_H, 'B', IVKeyStoC, IVKeySize);
+    if (ret) {
+        throw std::runtime_error("Error: Failed to generate IV Key S to C");
+    }
+
+    ret = GenerateSessionKey(K_bytes.buffer, exchange_hash_H, 'C', encKeyCtoS, encKeySize); 
+    if (ret) {
+        throw std::runtime_error("Error: Failed to generate Enc Key C to S");
+    }
+
+    ret = GenerateSessionKey(K_bytes.buffer, exchange_hash_H, 'D', encKeyStoC, encKeySize); 
+    if (ret) {
+        throw std::runtime_error("Error: Failed to generate Enc Key S to C");
+    }
+
+    ret = GenerateSessionKey(K_bytes.buffer, exchange_hash_H, 'E', macKeyCtoS, macKeySize);
+    if (ret) {
+        throw std::runtime_error("Error: Failed to generate MAC Key C to S");
+    }
+
+    ret = GenerateSessionKey(K_bytes.buffer, exchange_hash_H, 'F', macKeyStoC, macKeySize);
+    if (ret) {
+        throw std::runtime_error("Error: Failed to generate MAC Key S to C");
+    }
+
+}
 
 SSHClient::~SSHClient(){
 

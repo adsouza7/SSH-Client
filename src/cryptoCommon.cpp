@@ -82,7 +82,7 @@ int GenerateSessionKey(std::vector<uint8_t>& K, std::vector<uint8_t>& H,
     uint8_t keyID, std::vector<uint8_t>& keyOutput, uint16_t keySize) {
 
     std::vector<uint8_t> temp;
-    int buffLen = 0;
+    unsigned int buffLen = 0;
     
     EVP_MD_CTX* mdctx = EVP_MD_CTX_new();
     if (!mdctx) {
