@@ -10,6 +10,7 @@
 struct Packet {
     
     std::vector<uint8_t> buffer;
+    static uint8_t cipherBlockSize;
 
     Packet() = default;
     Packet(uint8_t* packetBytes, size_t numBytes) {
@@ -32,6 +33,8 @@ struct Packet {
     uint8_t getMessageCode();
 
     void serializePacket(std::vector<uint8_t>& byteArr);
+
+    static void setCipherBlockSize(uint16_t newSize);
 
 };
 

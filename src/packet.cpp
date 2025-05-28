@@ -1,5 +1,8 @@
 #include <packet.h>
 
+
+uint8_t Packet::cipherBlockSize = 8;
+
 void Packet::addByte(uint8_t byte) {
     buffer.push_back(byte);
 }
@@ -40,9 +43,9 @@ void Packet::serializePacket(std::vector<uint8_t>& byteArr) {
     byteArr.assign(buffer.begin(), buffer.begin() + buffer.size());
 
     // Calculate padding
-    int paddingLen = 8 - ((4 + 1 + byteArr.size()) % 8);
+    int paddingLen = cipherBlockSize - ((4 + 1 + byteArr.size()) % cipherBlockSize);
     if (paddingLen < 4) {
-        paddingLen += 8;
+        paddingLen += cipherBlockSize;
     }
 
     // Add padding
@@ -62,3 +65,7 @@ void Packet::serializePacket(std::vector<uint8_t>& byteArr) {
 
 }
 
+
+void Packet::setCipherBlockSize(uint16_t newSize) {
+    cipherBlockSize = newSize;
+}

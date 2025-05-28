@@ -20,7 +20,7 @@ const std::string IDString = "SSH-2.0-AaronClient\r\n";
 // Supported Algorithms
 const std::string kex_algos = "curve25519-sha256,diffie-hellman-group14-sha256";
 const std::string server_host_key_algos = "ssh-ed25519,rsa-sha2-256";
-const std::string encryption_ctos = "saes128-ctr,aes256-ctr";
+const std::string encryption_ctos = "aes128-ctr,aes256-ctr";
 const std::string encryption_stoc = "aes128-ctr,aes256-ctr";
 const std::string mac_ctos = "hmac-sha2-256,hmac-sha1";
 const std::string mac_stoc = "hmac-sha2-256,hmac-sha1";
@@ -296,10 +296,12 @@ void SSHClient::resolve_crypto(std::string& kex, std::string& server_key,
     if (encryption == "aes128-ctr") {
         IVKeySize = 16;
         encKeySize = 16;
+        Packet::setCipherBlockSize(16);
     }
     else if (encryption == "aes256-ctr") {
         IVKeySize = 16;
         encKeySize = 32;
+        Packet::setCipherBlockSize(16);
     }
     else {
         throw std::runtime_error("SSHClient::resolve_crypto() = Invalid encryption algorithm");
