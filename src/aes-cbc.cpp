@@ -1,13 +1,14 @@
 #include <openssl/evp.h>
 #include <openssl/err.h>
 #include <vector>
+#include <iostream>
 
 bool EncryptAES128(const std::vector<uint8_t>& plaintext,
                   const std::vector<uint8_t>& key,
                   const std::vector<uint8_t>& iv,
                   std::vector<uint8_t>& ciphertext){
 
-    size_t outputLen = plaintext.size();
+    int outputLen = plaintext.size();
 
     if (key.size() != 16 || iv.size() != 16) {
         std::cerr << "Key and IV are not of the correct size for AES-128-CBC" << std::endl;
@@ -20,7 +21,7 @@ bool EncryptAES128(const std::vector<uint8_t>& plaintext,
         return false;
     }
 
-    if (!EVP_CipherInit_ex2(ctx, EVP_aes_128_cbc, key.data(), iv.data(), 1,
+    if (!EVP_CipherInit_ex2(ctx, EVP_aes_128_cbc(), key.data(), iv.data(), 1,
         nullptr)) {
 
         ERR_print_errors_fp(stderr);
@@ -39,7 +40,7 @@ bool EncryptAES128(const std::vector<uint8_t>& plaintext,
         return false;
     }
 
-    if (!EVP_CipherFinal_ex(ctx, ciphertext.data(), &outLen)) { 
+    if (!EVP_CipherFinal_ex(ctx, ciphertext.data(), &outputLen)) { 
         ERR_print_errors_fp(stderr);
         EVP_CIPHER_CTX_free(ctx);
         return false;
@@ -51,12 +52,12 @@ bool EncryptAES128(const std::vector<uint8_t>& plaintext,
 }
 
 
-bool DecryptAES128(const std::vector<uint8_t>& plaintext,
+bool DecryptAES128(const std::vector<uint8_t>& ciphertext,
                   const std::vector<uint8_t>& key,
                   const std::vector<uint8_t>& iv,
-                  std::vector<uint8_t>& ciphertext){
+                  std::vector<uint8_t>& plaintext){
 
-    size_t outputLen = ciphertext.size();
+    int outputLen = ciphertext.size();
 
     if (key.size() != 16 || iv.size() != 16) {
         std::cerr << "Key and IV are not of the correct size for AES-128-CBC" << std::endl;
@@ -69,7 +70,7 @@ bool DecryptAES128(const std::vector<uint8_t>& plaintext,
         return false;
     }
 
-    if (!EVP_CipherInit_ex2(ctx, EVP_aes_128_cbc, key.data(), iv.data(), 0,
+    if (!EVP_CipherInit_ex2(ctx, EVP_aes_128_cbc(), key.data(), iv.data(), 0,
         nullptr)) {
 
         ERR_print_errors_fp(stderr);
@@ -88,7 +89,7 @@ bool DecryptAES128(const std::vector<uint8_t>& plaintext,
         return false;
     }
 
-    if (!EVP_CipherFinal_ex(ctx, plaintext.data(), &outLen)) { 
+    if (!EVP_CipherFinal_ex(ctx, plaintext.data(), &outputLen)) { 
         ERR_print_errors_fp(stderr);
         EVP_CIPHER_CTX_free(ctx);
         return false;
@@ -105,7 +106,7 @@ bool EncryptAES256(const std::vector<uint8_t>& plaintext,
                   const std::vector<uint8_t>& iv,
                   std::vector<uint8_t>& ciphertext){
 
-    size_t outputLen = plaintext.size();
+    int outputLen = plaintext.size();
 
     if (key.size() != 32 || iv.size() != 16) {
         std::cerr << "Key and IV are not of the correct size for AES-128-CBC" << std::endl;
@@ -118,7 +119,7 @@ bool EncryptAES256(const std::vector<uint8_t>& plaintext,
         return false;
     }
 
-    if (!EVP_CipherInit_ex2(ctx, EVP_aes_256_cbc, key.data(), iv.data(), 1,
+    if (!EVP_CipherInit_ex2(ctx, EVP_aes_256_cbc(), key.data(), iv.data(), 1,
         nullptr)) {
 
         ERR_print_errors_fp(stderr);
@@ -137,7 +138,7 @@ bool EncryptAES256(const std::vector<uint8_t>& plaintext,
         return false;
     }
 
-    if (!EVP_CipherFinal_ex(ctx, ciphertext.data(), &outLen)) { 
+    if (!EVP_CipherFinal_ex(ctx, ciphertext.data(), &outputLen)) { 
         ERR_print_errors_fp(stderr);
         EVP_CIPHER_CTX_free(ctx);
         return false;
@@ -149,12 +150,12 @@ bool EncryptAES256(const std::vector<uint8_t>& plaintext,
 }
 
 
-bool DecryptAES256(const std::vector<uint8_t>& plaintext,
+bool DecryptAES256(const std::vector<uint8_t>& ciphertext,
                   const std::vector<uint8_t>& key,
                   const std::vector<uint8_t>& iv,
-                  std::vector<uint8_t>& ciphertext){
+                  std::vector<uint8_t>& plaintext){
 
-    size_t outputLen = ciphertext.size();
+    int outputLen = ciphertext.size();
 
     if (key.size() != 32 || iv.size() != 16) {
         std::cerr << "Key and IV are not of the correct size for AES-128-CBC" << std::endl;
@@ -167,7 +168,7 @@ bool DecryptAES256(const std::vector<uint8_t>& plaintext,
         return false;
     }
 
-    if (!EVP_CipherInit_ex2(ctx, EVP_aes_128_cbc, key.data(), iv.data(), 0,
+    if (!EVP_CipherInit_ex2(ctx, EVP_aes_128_cbc(), key.data(), iv.data(), 0,
         nullptr)) {
 
         ERR_print_errors_fp(stderr);
@@ -186,7 +187,7 @@ bool DecryptAES256(const std::vector<uint8_t>& plaintext,
         return false;
     }
 
-    if (!EVP_CipherFinal_ex(ctx, plaintext.data(), &outLen)) { 
+    if (!EVP_CipherFinal_ex(ctx, plaintext.data(), &outputLen)) { 
         ERR_print_errors_fp(stderr);
         EVP_CIPHER_CTX_free(ctx);
         return false;
