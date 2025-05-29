@@ -21,7 +21,7 @@ bool EncryptAES128(const std::vector<uint8_t>& plaintext,
         return false;
     }
 
-    if (!EVP_CipherInit_ex2(ctx, EVP_aes_128_cbc(), key.data(), iv.data(), 1,
+    if (!EVP_CipherInit_ex2(ctx, EVP_aes_128_ctr(), key.data(), iv.data(), 1,
         nullptr)) {
 
         ERR_print_errors_fp(stderr);
@@ -70,7 +70,7 @@ bool DecryptAES128(const std::vector<uint8_t>& ciphertext,
         return false;
     }
 
-    if (!EVP_CipherInit_ex2(ctx, EVP_aes_128_cbc(), key.data(), iv.data(), 0,
+    if (!EVP_CipherInit_ex2(ctx, EVP_aes_128_ctr(), key.data(), iv.data(), 0,
         nullptr)) {
 
         ERR_print_errors_fp(stderr);
@@ -119,7 +119,7 @@ bool EncryptAES256(const std::vector<uint8_t>& plaintext,
         return false;
     }
 
-    if (!EVP_CipherInit_ex2(ctx, EVP_aes_256_cbc(), key.data(), iv.data(), 1,
+    if (!EVP_CipherInit_ex2(ctx, EVP_aes_256_ctr(), key.data(), iv.data(), 1,
         nullptr)) {
 
         ERR_print_errors_fp(stderr);
@@ -168,7 +168,7 @@ bool DecryptAES256(const std::vector<uint8_t>& ciphertext,
         return false;
     }
 
-    if (!EVP_CipherInit_ex2(ctx, EVP_aes_128_cbc(), key.data(), iv.data(), 0,
+    if (!EVP_CipherInit_ex2(ctx, EVP_aes_128_ctr(), key.data(), iv.data(), 0,
         nullptr)) {
 
         ERR_print_errors_fp(stderr);
