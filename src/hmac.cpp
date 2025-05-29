@@ -38,10 +38,7 @@ int ComputeHMAC(const std::vector<uint8_t>& key, uint32_t seqNum,
 
     // Prepare MAC input
     seqNumBE = htonl(seqNum);
-    temp.push_back((seqNumBE >> 24) & 0xFF);
-    temp.push_back((seqNumBE >> 16) & 0xFF);
-    temp.push_back((seqNumBE >> 8) & 0xFF);
-    temp.push_back(seqNumBE & 0xFF);
+    temp.insert(temp.end(), (uint8_t*)&seqNumBE, (uint8_t*)&seqNumBE + 4);
     temp.insert(temp.end(), packet.begin(), packet.end());
 
     if (!EVP_MAC_update(ctx, temp.data(), temp.size())) {

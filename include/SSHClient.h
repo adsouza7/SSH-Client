@@ -43,6 +43,7 @@ class SSHClient {
     private:
         int sockFD = 0;
         bool encryptPackets = false;
+        uint32_t sendSeqNum = 0;
 
         // Packet Recv Buffer
         std::queue<Packet*> packetRecvQ;

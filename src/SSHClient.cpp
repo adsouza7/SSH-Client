@@ -147,6 +147,22 @@ int SSHClient::sendPacket(Packet* packet) {
 
     
     if (encryptPackets) {
+        std::vector<uint8_t> encryptedPacket, computedMAC;
+
+        
+        ComputeHMAC(macKeyCtoS, 1, packetBytes, computedMAC, macMD);
+
+        Encrypt(packetBytes, encKeyCtoS, IVKeyCtoS, encryptedPacket);
+
+        encryptedPacket.insert(encryptedPacket.end(), computedMAC.begin(),
+                               computedMAC.end());
+
+        bytesSent = send(sockFD, encryptedPacket.data(),
+                         encryptedPacket.size(), 0);
+
+        if (bytesSent > 0) {
+            sendSeqNum++;
+        }
         
     }
     else {
@@ -226,6 +242,8 @@ int SSHClient::serverConnect() {
     test.addByte('L');
 
     test.serializePacket(plaintext);
+
+    sendPacket(&test);
 
     print_hex(plaintext, plaintext.size());
     Encrypt(plaintext, encKeyCtoS, IVKeyCtoS, ciphertext);
@@ -362,7 +380,7 @@ void SSHClient::resolve_crypto(std::string& kex, std::string& server_key,
     // TODO: Resolve MAC algorithms
     if (mac == "hmac-sha2-256") {
         macKeySize = 32;
-        macMD = "SHA-256";
+        macMD = "SHA256";
     }
     else if (encryption == "hmac-sha1") {
         macKeySize = 20;
