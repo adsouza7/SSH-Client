@@ -104,7 +104,7 @@ Packet* SSHClient::receivePacket() {
     
     Packet* recvPacket = nullptr;
 
-    if (packetRecvQ.size() < 2) {
+    if (packetRecvQ.size() < 1) { // change back to 2 later
 
         std::vector<uint8_t> recvData(MAX_PACKET_SIZE);
         int recvLen;
@@ -208,7 +208,30 @@ int SSHClient::serverConnect() {
     generate_session_keys();
 
     tempPacket = Packet();
-    tempPacket.addBytes();
+    tempPacket.addByte(SSH_MSG_NEWKEYS);
+    sendPacket(&tempPacket);
+
+    recvPacket = receivePacket();
+    if (*(recvPacket->buffer.data()) == SSH_MSG_NEWKEYS) {
+        encryptPackets = true;
+        std::cout << "BEGIN ENCRYPTION" << std::endl;
+    }
+
+    /* temp stuff */
+    Packet test;
+    std::vector<uint8_t> plaintext, ciphertext, plaintext2;
+    test.addByte('H');
+    test.addByte('E');
+    test.addByte('L');
+    test.addByte('L');
+
+    test.serializePacket(plaintext);
+
+    print_hex(plaintext, plaintext.size());
+    Encrypt(plaintext, encKeyCtoS, IVKeyCtoS, ciphertext);
+    print_hex(ciphertext, ciphertext.size());
+    Decrypt(ciphertext, encKeyCtoS, IVKeyCtoS, plaintext2);
+    print_hex(plaintext2, plaintext2.size());
 
     return 0;
 }
