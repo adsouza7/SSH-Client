@@ -141,9 +141,17 @@ Packet* SSHClient::receivePacket() {
 int SSHClient::sendPacket(Packet* packet) {
     
     std::vector<uint8_t> packetBytes;
+    int bytesSent;
+
     packet->serializePacket(packetBytes);
 
-    int bytesSent = send(sockFD, packetBytes.data(), packetBytes.size(), 0);
+    
+    if (encryptPackets) {
+        
+    }
+    else {
+        bytesSent = send(sockFD, packetBytes.data(), packetBytes.size(), 0);
+    }
 
     return bytesSent;
 }
@@ -198,6 +206,9 @@ int SSHClient::serverConnect() {
     server_signature) << std::endl;
 
     generate_session_keys();
+
+    tempPacket = Packet();
+    tempPacket.addBytes();
 
     return 0;
 }
@@ -310,11 +321,15 @@ void SSHClient::resolve_crypto(std::string& kex, std::string& server_key,
         IVKeySize = 16;
         encKeySize = 16;
         Packet::setCipherBlockSize(16);
+        Encrypt = EncryptAES128;
+        Decrypt = DecryptAES128;
     }
     else if (encryption == "aes256-ctr") {
         IVKeySize = 16;
         encKeySize = 32;
         Packet::setCipherBlockSize(16);
+        Encrypt = EncryptAES256;
+        Decrypt = DecryptAES256;
     }
     else {
         throw std::runtime_error("SSHClient::resolve_crypto() = Invalid encryption algorithm");
@@ -324,9 +339,11 @@ void SSHClient::resolve_crypto(std::string& kex, std::string& server_key,
     // TODO: Resolve MAC algorithms
     if (mac == "hmac-sha2-256") {
         macKeySize = 32;
+        macMD = "SHA-256";
     }
     else if (encryption == "hmac-sha1") {
         macKeySize = 20;
+        macMD = "SHA-1";
     }
     else {
         throw std::runtime_error("SSHClient::resolve_crypto() = Invalid MAC algorithm");
