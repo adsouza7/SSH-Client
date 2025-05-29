@@ -150,9 +150,11 @@ int SSHClient::sendPacket(Packet* packet) {
         std::vector<uint8_t> encryptedPacket, computedMAC;
 
         
-        ComputeHMAC(macKeyCtoS, 1, packetBytes, computedMAC, macMD);
+        ComputeHMAC(macKeyCtoS, sendSeqNum, packetBytes, computedMAC, macMD);
 
         Encrypt(packetBytes, encKeyCtoS, IVKeyCtoS, encryptedPacket);
+
+        //print_hex(computedMAC, computedMAC.size());
 
         encryptedPacket.insert(encryptedPacket.end(), computedMAC.begin(),
                                computedMAC.end());
@@ -160,14 +162,16 @@ int SSHClient::sendPacket(Packet* packet) {
         bytesSent = send(sockFD, encryptedPacket.data(),
                          encryptedPacket.size(), 0);
 
-        if (bytesSent > 0) {
-            sendSeqNum++;
-        }
-        
+                
     }
     else {
         bytesSent = send(sockFD, packetBytes.data(), packetBytes.size(), 0);
     }
+
+    if (bytesSent > 0) {
+            sendSeqNum++;
+    }
+
 
     return bytesSent;
 }
@@ -235,21 +239,12 @@ int SSHClient::serverConnect() {
 
     /* temp stuff */
     Packet test;
-    std::vector<uint8_t> plaintext, ciphertext, plaintext2;
-    test.addByte('H');
-    test.addByte('E');
-    test.addByte('L');
-    test.addByte('L');
-
-    test.serializePacket(plaintext);
+    test.addByte(5);
+    std::string userAuth = "ssh-userauth";
+    test.addString(userAuth);
 
     sendPacket(&test);
 
-    print_hex(plaintext, plaintext.size());
-    Encrypt(plaintext, encKeyCtoS, IVKeyCtoS, ciphertext);
-    print_hex(ciphertext, ciphertext.size());
-    Decrypt(ciphertext, encKeyCtoS, IVKeyCtoS, plaintext2);
-    print_hex(plaintext2, plaintext2.size());
 
     return 0;
 }
@@ -376,13 +371,13 @@ void SSHClient::resolve_crypto(std::string& kex, std::string& server_key,
         throw std::runtime_error("SSHClient::resolve_crypto() = Invalid encryption algorithm");
     }
 
-
+    
     // TODO: Resolve MAC algorithms
     if (mac == "hmac-sha2-256") {
         macKeySize = 32;
         macMD = "SHA256";
     }
-    else if (encryption == "hmac-sha1") {
+    else if (mac == "hmac-sha1") {
         macKeySize = 20;
         macMD = "SHA-1";
     }
@@ -522,6 +517,8 @@ void SSHClient::generate_session_keys() {
     if (ret) {
         throw std::runtime_error("Error: Failed to generate MAC Key C to S");
     }
+
+    print_hex(macKeyCtoS, macKeyCtoS.size());
 
     ret = GenerateSessionKey(K_bytes.buffer, exchange_hash_H, 'F', macKeyStoC, macKeySize);
     if (ret) {
