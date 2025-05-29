@@ -33,7 +33,7 @@ class SSHClient {
         ~SSHClient(); /* Close socket */
 
         int serverConnect();
-        int sendPacket();
+        int sendPacket(Packet* packet);
         Packet* receivePacket();
         int serverDisconnect();
 
@@ -94,7 +94,7 @@ class SSHClient {
                             std::string& encryption, std::string& mac,
                             std::string& compression);
 
-        void build_dh_kexinit(std::vector<uint8_t>& buffer);
+        void build_dh_kexinit(Packet* dh_kexinit);
         void parse_dh_kex_reply(Packet* packet);
         void generate_exchange_hash();
         void generate_session_keys();

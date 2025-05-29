@@ -137,6 +137,18 @@ Packet* SSHClient::receivePacket() {
     return recvPacket;
 }
 
+
+int SSHClient::sendPacket(Packet* packet) {
+    
+    std::vector<uint8_t> packetBytes;
+    packet->serializePacket(packetBytes);
+
+    int bytesSent = send(sockFD, packetBytes.data(), packetBytes.size(), 0);
+
+    return bytesSent;
+}
+
+
 int SSHClient::serverConnect() {
 
     std::vector<uint8_t> buffer(255);
@@ -157,19 +169,21 @@ int SSHClient::serverConnect() {
 
     // KEXINIT send
     build_kexinit();
+    sendPacket(this->client_kexinit);
+    /*
     this->client_kexinit->serializePacket(packetBytes);
-    send(sockFD, packetBytes.data(), packetBytes.size(), 0);
+    send(sockFD, packetBytes.data(), packetBytes.size(), 0);*/
 
     // Server KEXINIT recv
     this->server_kexinit = receivePacket();
     parse_kexinit();
 
     // DH_KEXINIT send
-    build_dh_kexinit(packetBytes);
-    send(sockFD, packetBytes.data(), packetBytes.size(), 0);
+    Packet tempPacket = Packet(); 
+    build_dh_kexinit(&tempPacket);
+    sendPacket(&tempPacket);
 
     Packet* recvPacket = receivePacket();
-    //print_hex(recvPacket->buffer, recvPacket->buffer.size());
     parse_dh_kex_reply(recvPacket);
     delete recvPacket;
 
@@ -177,7 +191,6 @@ int SSHClient::serverConnect() {
     < 0) {
         std::cout << "ERROR" << std::endl;
     }
-    //print_hex(shared_secret_K, shared_secret_K.size());
 
     generate_exchange_hash();
 
@@ -324,30 +337,27 @@ void SSHClient::resolve_crypto(std::string& kex, std::string& server_key,
     << " "  << compression << std::endl; 
 }
 
-void SSHClient::build_dh_kexinit(std::vector<uint8_t>& packet) {
+void SSHClient::build_dh_kexinit(Packet* dh_kexinit) {
     
     client_dh_keypair = DHKeyGen();
     if (!client_dh_keypair) {
         throw std::runtime_error("SSHClient::build_dh_kexinit() = Key Gen Failed");
     }
 
-    Packet dh_kexinit;
     std::vector<uint8_t> keyBytes;
 
     DHKey2Bytes(client_dh_keypair, keyBytes);
 
     // Add message code
-    dh_kexinit.addByte(SSH_MSG_KEXDH_INIT);
+    dh_kexinit->addByte(SSH_MSG_KEXDH_INIT);
 
     // Accomodate DH14 key
     if (EVP_PKEY_id(client_dh_keypair) == EVP_PKEY_DH) {
-        dh_kexinit.addMPInt(keyBytes);
+        dh_kexinit->addMPInt(keyBytes);
     }
     else {
-        dh_kexinit.addString(keyBytes); 
+        dh_kexinit->addString(keyBytes); 
     }
-
-    dh_kexinit.serializePacket(packet);
 
 }
 
