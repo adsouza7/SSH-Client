@@ -29,19 +29,23 @@ int ComputeHash(std::vector<uint8_t>& input, std::vector<uint8_t>& output);
 int GenerateSessionKey(std::vector<uint8_t>& K, std::vector<uint8_t>& H,
     uint8_t keyID, std::vector<uint8_t>& keyOutput, uint16_t keySize); 
 
-bool EncryptAES128(const std::vector<uint8_t>& plaintext,
+bool EncryptAES128(const uint8_t* plaintext,
+                  const int plaintextSize,
                   const std::vector<uint8_t>& key,
                   const std::vector<uint8_t>& iv,
                   std::vector<uint8_t>& ciphertext);
-bool EncryptAES256(const std::vector<uint8_t>& plaintext,
+bool EncryptAES256(const uint8_t* plaintext,
+                  const int plaintextSize,
                   const std::vector<uint8_t>& key,
                   const std::vector<uint8_t>& iv,
                   std::vector<uint8_t>& ciphertext);
-bool DecryptAES128(const std::vector<uint8_t>& ciphertext,
+bool DecryptAES128(const uint8_t* ciphertext,
+                  const int ciphertextSize,
                   const std::vector<uint8_t>& key,
                   const std::vector<uint8_t>& iv,
                   std::vector<uint8_t>& plaintext);
-bool DecryptAES256(const std::vector<uint8_t>& ciphertext,
+bool DecryptAES256(const uint8_t* ciphertext,
+                  const int ciphertextSize,
                   const std::vector<uint8_t>& key,
                   const std::vector<uint8_t>& iv,
                   std::vector<uint8_t>& plaintext);

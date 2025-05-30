@@ -126,13 +126,13 @@ Packet* SSHClient::receivePacket() {
                     
                     // Decrypt first block of enc packet to get packet length
                     temp.assign(recvData.begin() + curr, recvData.begin() + curr + 16);
-                    Decrypt(temp, encKeyStoC, IVKeyStoC, decBytes);
+                    Decrypt(temp.data(), temp.size(), encKeyStoC, IVKeyStoC, decBytes);
                     packetLen = ntohl(*((uint32_t*)(decBytes.data() + curr)));
                     
                     // Decrypt entire packet
                     temp.assign(recvData.begin() + curr, 
-                                recvData.begin() + curr + packetLen + 3);
-                    Decrypt(temp, encKeyStoC, IVKeyStoC, decBytes);
+                                recvData.begin() + curr + packetLen + 4);
+                    Decrypt(temp.data(), temp.size(), encKeyStoC, IVKeyStoC, decBytes);
                     
                     // Extract HMAC bytes
                     temp.assign(recvData.begin() + curr + packetLen + 4,
@@ -204,7 +204,7 @@ int SSHClient::sendPacket(Packet* packet) {
         
         ComputeHMAC(macKeyCtoS, sendSeqNum, packetBytes, computedMAC, macMD);
 
-        Encrypt(packetBytes, encKeyCtoS, IVKeyCtoS, encryptedPacket);
+        Encrypt(packetBytes.data(), packetBytes.size(), encKeyCtoS, IVKeyCtoS, encryptedPacket);
 
         //print_hex(computedMAC, computedMAC.size());
 

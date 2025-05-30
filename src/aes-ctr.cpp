@@ -3,12 +3,13 @@
 #include <vector>
 #include <iostream>
 
-bool EncryptAES128(const std::vector<uint8_t>& plaintext,
+bool EncryptAES128(const uint8_t* plaintext,
+                  const int plaintextSize,
                   const std::vector<uint8_t>& key,
                   const std::vector<uint8_t>& iv,
                   std::vector<uint8_t>& ciphertext){
 
-    int outputLen = plaintext.size();
+    int outputLen = plaintextSize;
 
     if (key.size() != 16 || iv.size() != 16) {
         std::cerr << "Key and IV are not of the correct size for AES-128-CBC" << std::endl;
@@ -32,8 +33,8 @@ bool EncryptAES128(const std::vector<uint8_t>& plaintext,
     EVP_CIPHER_CTX_set_padding(ctx, 0);
 
     ciphertext.resize(outputLen);
-    if (!EVP_CipherUpdate(ctx, ciphertext.data(), &outputLen, plaintext.data(),
-        plaintext.size())) {
+    if (!EVP_CipherUpdate(ctx, ciphertext.data(), &outputLen, plaintext,
+        plaintextSize)) {
     
         ERR_print_errors_fp(stderr);
         EVP_CIPHER_CTX_free(ctx);
@@ -52,12 +53,13 @@ bool EncryptAES128(const std::vector<uint8_t>& plaintext,
 }
 
 
-bool DecryptAES128(const std::vector<uint8_t>& ciphertext,
+bool DecryptAES128(const uint8_t* ciphertext,
+                  const int ciphertextSize,
                   const std::vector<uint8_t>& key,
                   const std::vector<uint8_t>& iv,
                   std::vector<uint8_t>& plaintext){
 
-    int outputLen = ciphertext.size();
+    int outputLen = ciphertextSize;
 
     if (key.size() != 16 || iv.size() != 16) {
         std::cerr << "Key and IV are not of the correct size for AES-128-CBC" << std::endl;
@@ -81,8 +83,8 @@ bool DecryptAES128(const std::vector<uint8_t>& ciphertext,
     EVP_CIPHER_CTX_set_padding(ctx, 0);
 
     plaintext.resize(outputLen);
-    if (!EVP_CipherUpdate(ctx, plaintext.data(), &outputLen, ciphertext.data(),
-        ciphertext.size())) {
+    if (!EVP_CipherUpdate(ctx, plaintext.data(), &outputLen, ciphertext,
+        ciphertextSize)) {
     
         ERR_print_errors_fp(stderr);
         EVP_CIPHER_CTX_free(ctx);
@@ -101,12 +103,13 @@ bool DecryptAES128(const std::vector<uint8_t>& ciphertext,
 }
 
 
-bool EncryptAES256(const std::vector<uint8_t>& plaintext,
+bool EncryptAES256(const uint8_t* plaintext,
+                  const int plaintextSize,
                   const std::vector<uint8_t>& key,
                   const std::vector<uint8_t>& iv,
                   std::vector<uint8_t>& ciphertext){
 
-    int outputLen = plaintext.size();
+    int outputLen = plaintextSize;
 
     if (key.size() != 32 || iv.size() != 16) {
         std::cerr << "Key and IV are not of the correct size for AES-128-CBC" << std::endl;
@@ -130,8 +133,8 @@ bool EncryptAES256(const std::vector<uint8_t>& plaintext,
     EVP_CIPHER_CTX_set_padding(ctx, 0);
 
     ciphertext.resize(outputLen);
-    if (!EVP_CipherUpdate(ctx, ciphertext.data(), &outputLen, plaintext.data(),
-        plaintext.size())) {
+    if (!EVP_CipherUpdate(ctx, ciphertext.data(), &outputLen, plaintext,
+        plaintextSize)) {
     
         ERR_print_errors_fp(stderr);
         EVP_CIPHER_CTX_free(ctx);
@@ -150,12 +153,13 @@ bool EncryptAES256(const std::vector<uint8_t>& plaintext,
 }
 
 
-bool DecryptAES256(const std::vector<uint8_t>& ciphertext,
+bool DecryptAES256(const uint8_t* ciphertext,
+                  const int ciphertextSize,
                   const std::vector<uint8_t>& key,
                   const std::vector<uint8_t>& iv,
                   std::vector<uint8_t>& plaintext){
 
-    int outputLen = ciphertext.size();
+    int outputLen = ciphertextSize;
 
     if (key.size() != 32 || iv.size() != 16) {
         std::cerr << "Key and IV are not of the correct size for AES-128-CBC" << std::endl;
@@ -179,8 +183,8 @@ bool DecryptAES256(const std::vector<uint8_t>& ciphertext,
     EVP_CIPHER_CTX_set_padding(ctx, 0);
 
     plaintext.resize(outputLen);
-    if (!EVP_CipherUpdate(ctx, plaintext.data(), &outputLen, ciphertext.data(),
-        ciphertext.size())) {
+    if (!EVP_CipherUpdate(ctx, plaintext.data(), &outputLen, ciphertext,
+        ciphertextSize)) {
     
         ERR_print_errors_fp(stderr);
         EVP_CIPHER_CTX_free(ctx);

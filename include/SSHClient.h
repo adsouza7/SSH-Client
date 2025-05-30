@@ -92,11 +92,13 @@ class SSHClient {
         EVP_PKEY* (*ExtractServerKey)(std::vector<uint8_t>&);
         int (*VerifySignature)(EVP_PKEY* key, std::vector<uint8_t>& hash,
             std::vector<uint8_t>& signature);
-        bool (*Encrypt)(const std::vector<uint8_t>&,
+        bool (*Encrypt)(const uint8_t*,
+                        const int,
                         const std::vector<uint8_t>&,
                         const std::vector<uint8_t>&,
                         std::vector<uint8_t>&);
-        bool (*Decrypt)(const std::vector<uint8_t>&,
+        bool (*Decrypt)(const uint8_t*,
+                        const int,
                         const std::vector<uint8_t>&,
                         const std::vector<uint8_t>&,
                         std::vector<uint8_t>&);
