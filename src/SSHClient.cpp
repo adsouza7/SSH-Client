@@ -116,15 +116,67 @@ Packet* SSHClient::receivePacket() {
             uint32_t packetLen = 0;
             uint8_t paddingLen = 0;
 
-            while (curr < recvLen) {
-                packetLen = ntohl(((uint32_t*)(recvData.data() + curr))[0]);
-                paddingLen = recvData[curr + 4];
+            if (encryptPackets) {
+                
+                // First block of ciphertext (replace 16 w/ var later)
+                std::vector<uint8_t> temp;
+                std::vector<uint8_t> decBytes;
 
-                packetRecvQ.push(new Packet((recvData.data() + curr + 5),
-                    packetLen - paddingLen - 1));
+                while (curr < recvLen) {
+                    
+                    // Decrypt first block of enc packet to get packet length
+                    temp.assign(recvData.begin() + curr, recvData.begin() + curr + 16);
+                    Decrypt(temp, encKeyStoC, IVKeyStoC, decBytes);
+                    packetLen = ntohl(*((uint32_t*)(decBytes.data() + curr)));
+                    
+                    // Decrypt entire packet
+                    temp.assign(recvData.begin() + curr, 
+                                recvData.begin() + curr + packetLen + 3);
+                    Decrypt(temp, encKeyStoC, IVKeyStoC, decBytes);
+                    
+                    // Extract HMAC bytes
+                    temp.assign(recvData.begin() + curr + packetLen + 4,
+                                recvData.begin() + curr + packetLen + 4 + macKeySize);
 
-                curr += packetLen + 4;
+                    int test = VerifyHMAC(macKeyStoC, recvSeqNum, decBytes,
+                    temp, macMD);
 
+                    std::cout << "Verify: " << test << std::endl;
+
+                    break;
+
+                    /*VerifyHMAC(:vector<uint8_t>& key, uint32_t seqNum,
+              const std::vector<uint8_t>& packet,
+              const std::vector<uint8_t>& recvHMAC, const std::string& mdName);
+*/
+
+
+
+                }
+                
+                /*
+                std::cout << "Size: " << packetLen << std::endl;
+
+                std::cout << "MSG: " << decBytes.data() + 5 << std::endl;
+                */
+                print_hex(decBytes, decBytes.size());
+                return nullptr;
+
+
+            }
+            else {
+ 
+                while (curr < recvLen) {
+                    packetLen = ntohl(((uint32_t*)(recvData.data() + curr))[0]);
+                    paddingLen = recvData[curr + 4];
+
+                    packetRecvQ.push(new Packet((recvData.data() + curr + 5),
+                        packetLen - paddingLen - 1));
+
+                    curr += packetLen + 4;
+                    recvSeqNum++;
+
+                }
             }
         }
     }
@@ -244,6 +296,8 @@ int SSHClient::serverConnect() {
     test.addString(userAuth);
 
     sendPacket(&test);
+
+    receivePacket();
 
 
     return 0;
