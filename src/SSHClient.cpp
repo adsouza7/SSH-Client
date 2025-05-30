@@ -122,7 +122,6 @@ Packet* SSHClient::receivePacket() {
                 std::vector<uint8_t> temp;
                 std::vector<uint8_t> decBytes;
                 uint8_t *packetBytes, *HMACBytes;
-                EVP_CIPHER_CTX *savedCTX = nullptr;
 
                 while (curr < recvLen) {
                     
@@ -131,13 +130,14 @@ Packet* SSHClient::receivePacket() {
                     
 
                     Decrypt(&decCTX, packetBytes, 16, encKeyStoC, IVKeyStoC,
-                            decBytes, &savedCTX);
+                            decBytes);
                     packetLen = ntohl(*((uint32_t*)(decBytes.data() + curr)));
                     paddingLen = *(decBytes.data() + 4);
                     
                     // Decrypt entire packet
-                    Decrypt(&savedCTX, packetBytes, packetLen + 4, encKeyStoC,
-                            IVKeyStoC, decBytes, nullptr);
+                    Decrypt(&decCTX, packetBytes + 16, packetLen + 4 - 16, encKeyStoC,
+                            IVKeyStoC, temp);
+                    decBytes.insert(decBytes.end(), temp.begin(), temp.end());
                     
                     // Extract HMAC bytes
                     HMACBytes = packetBytes + packetLen + 4;
@@ -305,8 +305,6 @@ int SSHClient::AuthenticateUser(std::string& username, std::string& password) {
            return 0;
         }
 
-        print_hex(recvPacket->buffer, recvPacket->buffer.size());
-        
         authPhase = true;
         delete recvPacket;
     }
@@ -322,8 +320,6 @@ int SSHClient::AuthenticateUser(std::string& username, std::string& password) {
 
     std::vector<uint8_t> temp;
     authReq.serializePacket(temp);
-
-    print_hex(temp, temp.size());
 
     sendPacket(&authReq);
 

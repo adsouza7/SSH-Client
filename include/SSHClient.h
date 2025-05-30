@@ -113,8 +113,7 @@ class SSHClient {
                         const int,
                         const std::vector<uint8_t>&,
                         const std::vector<uint8_t>&,
-                        std::vector<uint8_t>&,
-                        EVP_CIPHER_CTX**);
+                        std::vector<uint8_t>&);
 
 
 

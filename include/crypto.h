@@ -46,15 +46,13 @@ bool DecryptAES128(EVP_CIPHER_CTX** decCTX,
                   const int ciphertextSize,
                   const std::vector<uint8_t>& key,
                   const std::vector<uint8_t>& iv,
-                  std::vector<uint8_t>& plaintext,
-                  EVP_CIPHER_CTX** ctxOut);
+                  std::vector<uint8_t>& plaintext);
 bool DecryptAES256(EVP_CIPHER_CTX** decCTX,
                   const uint8_t* ciphertext,
                   const int ciphertextSize,
                   const std::vector<uint8_t>& key,
                   const std::vector<uint8_t>& iv,
-                  std::vector<uint8_t>& plaintext,
-                  EVP_CIPHER_CTX** ctxOut);
+                  std::vector<uint8_t>& plaintext);
 
 int ComputeHMAC(const std::vector<uint8_t>& key, uint32_t seqNum, 
                 const uint8_t* packet, const size_t packetSize,

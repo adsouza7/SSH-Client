@@ -59,8 +59,7 @@ bool DecryptAES128(EVP_CIPHER_CTX** decCTX,
                   const int ciphertextSize,
                   const std::vector<uint8_t>& key,
                   const std::vector<uint8_t>& iv,
-                  std::vector<uint8_t>& plaintext,
-                  EVP_CIPHER_CTX** ctxOut){
+                  std::vector<uint8_t>& plaintext){
 
     int outputLen = ciphertextSize;
 
@@ -87,27 +86,10 @@ bool DecryptAES128(EVP_CIPHER_CTX** decCTX,
 
     }
 
-    if (ctxOut) {
-        if (*ctxOut == nullptr) {
-            *ctxOut = EVP_CIPHER_CTX_new();
-            if (!*ctxOut) {
-                ERR_print_errors_fp(stderr);
-                return false;
-            }
-
-        }
-        std::cout << EVP_CIPHER_CTX_copy(*ctxOut, *decCTX) << std::endl;
-    }
-
     plaintext.resize(outputLen);
     if (!EVP_CipherUpdate(*decCTX, plaintext.data(), &outputLen, ciphertext,
         ciphertextSize)) {
     
-        ERR_print_errors_fp(stderr);
-        return false;
-    }
-
-    if (!EVP_CipherFinal_ex(*decCTX, plaintext.data(), &outputLen)) { 
         ERR_print_errors_fp(stderr);
         return false;
     }
@@ -158,11 +140,6 @@ bool EncryptAES256(EVP_CIPHER_CTX** encCTX,
         return false;
     }
 
-    if (!EVP_CipherFinal_ex(*encCTX, ciphertext.data(), &outputLen)) { 
-        ERR_print_errors_fp(stderr);
-        return false;
-    }
-
     return true;
 
 }
@@ -173,8 +150,7 @@ bool DecryptAES256(EVP_CIPHER_CTX** decCTX,
                   const int ciphertextSize,
                   const std::vector<uint8_t>& key,
                   const std::vector<uint8_t>& iv,
-                  std::vector<uint8_t>& plaintext,
-                  EVP_CIPHER_CTX** ctxOut){
+                  std::vector<uint8_t>& plaintext){
 
     int outputLen = ciphertextSize;
 
@@ -201,19 +177,10 @@ bool DecryptAES256(EVP_CIPHER_CTX** decCTX,
 
     }
 
-    if (ctxOut) {
-        EVP_CIPHER_CTX_copy(*ctxOut, *decCTX);
-    }
-
     plaintext.resize(outputLen);
     if (!EVP_CipherUpdate(*decCTX, plaintext.data(), &outputLen, ciphertext,
         ciphertextSize)) {
     
-        ERR_print_errors_fp(stderr);
-        return false;
-    }
-
-    if (!EVP_CipherFinal_ex(*decCTX, plaintext.data(), &outputLen)) { 
         ERR_print_errors_fp(stderr);
         return false;
     }
