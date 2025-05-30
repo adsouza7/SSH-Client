@@ -122,17 +122,22 @@ Packet* SSHClient::receivePacket() {
                 std::vector<uint8_t> temp;
                 std::vector<uint8_t> decBytes;
                 uint8_t *packetBytes, *HMACBytes;
+                EVP_CIPHER_CTX *savedCTX = nullptr;
 
                 while (curr < recvLen) {
                     
                     // Decrypt first block of enc packet to get packet length
                     packetBytes = recvData.data() + curr;
-                    Decrypt(packetBytes, 16, encKeyStoC, IVKeyStoC, decBytes);
+                    
+
+                    Decrypt(&decCTX, packetBytes, 16, encKeyStoC, IVKeyStoC,
+                            decBytes, &savedCTX);
                     packetLen = ntohl(*((uint32_t*)(decBytes.data() + curr)));
                     paddingLen = *(decBytes.data() + 4);
                     
                     // Decrypt entire packet
-                    Decrypt(packetBytes, packetLen + 4, encKeyStoC, IVKeyStoC, decBytes);
+                    Decrypt(&savedCTX, packetBytes, packetLen + 4, encKeyStoC,
+                            IVKeyStoC, decBytes, nullptr);
                     
                     // Extract HMAC bytes
                     HMACBytes = packetBytes + packetLen + 4;
@@ -190,7 +195,7 @@ int SSHClient::sendPacket(Packet* packet) {
         ComputeHMAC(macKeyCtoS, sendSeqNum, packetBytes.data(), packetBytes.size(),
                     computedMAC, macMD);
 
-        Encrypt(packetBytes.data(), packetBytes.size(), encKeyCtoS, IVKeyCtoS, encryptedPacket);
+        Encrypt(&encCTX, packetBytes.data(), packetBytes.size(), encKeyCtoS, IVKeyCtoS, encryptedPacket);
 
         //print_hex(computedMAC, computedMAC.size());
 
@@ -275,21 +280,60 @@ int SSHClient::serverConnect() {
         std::cout << "BEGIN ENCRYPTION" << std::endl;
     }
 
-    /* temp stuff */
-    Packet test;
-    test.addByte(5);
-    std::string userAuth = "ssh-userauth";
-    test.addString(userAuth);
-
-    sendPacket(&test);
-
-    recvPacket = receivePacket();
-    print_hex(recvPacket->buffer, recvPacket->buffer.size());
-
 
     return 0;
 }
 
+
+int SSHClient::AuthenticateUser(std::string& username, std::string& password) {
+    
+    Packet* recvPacket;
+
+    if (!authPhase) {
+        
+        // Construct Service Request Packet
+        Packet serviceReq;
+        serviceReq.addByte(SSH_MSG_SERVICE_REQUEST);
+        serviceReq.addString("ssh-userauth");
+
+        sendPacket(&serviceReq);
+
+        recvPacket = receivePacket();
+        if (recvPacket->getMessageCode() != SSH_MSG_SERVICE_ACCEPT) {
+           std::cerr << "User Auth Service Request Failed" << std::endl;
+           delete recvPacket;
+           return 0;
+        }
+
+        print_hex(recvPacket->buffer, recvPacket->buffer.size());
+        
+        authPhase = true;
+        delete recvPacket;
+    }
+
+    // Construct User Auth Request Packet
+    Packet authReq;
+    authReq.addByte(SSH_MSG_USERAUTH_REQUEST);
+    authReq.addString(username);
+    authReq.addString("ssh-connection");
+    authReq.addString("password");
+    authReq.addBool(false);
+    authReq.addString(password);
+
+    std::vector<uint8_t> temp;
+    authReq.serializePacket(temp);
+
+    print_hex(temp, temp.size());
+
+    sendPacket(&authReq);
+
+    recvPacket = receivePacket();
+
+    print_hex(recvPacket->buffer, recvPacket->buffer.size());
+
+    return 1;
+
+}
 
 void SSHClient::parse_kexinit() {
 
