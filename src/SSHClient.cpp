@@ -138,8 +138,9 @@ Packet* SSHClient::receivePacket() {
                     temp.assign(recvData.begin() + curr + packetLen + 4,
                                 recvData.begin() + curr + packetLen + 4 + macKeySize);
 
-                    int test = VerifyHMAC(macKeyStoC, recvSeqNum, decBytes,
-                    temp, macMD);
+                    int test = VerifyHMAC(macKeyStoC, recvSeqNum,
+                                          decBytes.data(), decBytes.size(),
+                                          temp.data(), temp.size(), macMD);
 
                     std::cout << "Verify: " << test << std::endl;
 
@@ -202,7 +203,8 @@ int SSHClient::sendPacket(Packet* packet) {
         std::vector<uint8_t> encryptedPacket, computedMAC;
 
         
-        ComputeHMAC(macKeyCtoS, sendSeqNum, packetBytes, computedMAC, macMD);
+        ComputeHMAC(macKeyCtoS, sendSeqNum, packetBytes.data(), packetBytes.size(),
+                    computedMAC, macMD);
 
         Encrypt(packetBytes.data(), packetBytes.size(), encKeyCtoS, IVKeyCtoS, encryptedPacket);
 

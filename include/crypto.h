@@ -51,10 +51,10 @@ bool DecryptAES256(const uint8_t* ciphertext,
                   std::vector<uint8_t>& plaintext);
 
 int ComputeHMAC(const std::vector<uint8_t>& key, uint32_t seqNum, 
-                const std::vector<uint8_t>& packet, 
+                const uint8_t* packet, const size_t packetSize,
                 std::vector<uint8_t>& outputMAC, const std::string& mdName);
 bool VerifyHMAC(const std::vector<uint8_t>& key, uint32_t seqNum,
-              const std::vector<uint8_t>& packet,
-              const std::vector<uint8_t>& recvHMAC, const std::string& mdName);
-
+              const uint8_t* packet, const size_t packetSize,
+              const uint8_t* recvHMAC, const size_t HMACSize,
+              const std::string& mdName);
 #endif

@@ -6,7 +6,7 @@
 #include <arpa/inet.h>
 
 int ComputeHMAC(const std::vector<uint8_t>& key, uint32_t seqNum, 
-                const std::vector<uint8_t>& packet, 
+                const uint8_t* packet, const size_t packetSize,
                 std::vector<uint8_t>& outputMAC, const std::string& mdName) {
 
     int ret = 0;
@@ -39,7 +39,7 @@ int ComputeHMAC(const std::vector<uint8_t>& key, uint32_t seqNum,
     // Prepare MAC input
     seqNumBE = htonl(seqNum);
     temp.insert(temp.end(), (uint8_t*)&seqNumBE, (uint8_t*)&seqNumBE + 4);
-    temp.insert(temp.end(), packet.begin(), packet.end());
+    temp.insert(temp.end(), packet, packet + packetSize);
 
     if (!EVP_MAC_update(ctx, temp.data(), temp.size())) {
         ERR_print_errors_fp(stderr);
@@ -65,19 +65,20 @@ int ComputeHMAC(const std::vector<uint8_t>& key, uint32_t seqNum,
 
 
 bool VerifyHMAC(const std::vector<uint8_t>& key, uint32_t seqNum,
-              const std::vector<uint8_t>& packet,
-              const std::vector<uint8_t>& recvHMAC, const std::string& mdName) {
+              const uint8_t* packet, const size_t packetSize,
+              const uint8_t* recvHMAC, const size_t HMACSize,
+              const std::string& mdName) {
     
     std::vector<uint8_t> computedHMAC;
-    if (!ComputeHMAC(key, seqNum, packet, computedHMAC, mdName)) {
+    if (!ComputeHMAC(key, seqNum, packet, packetSize, computedHMAC, mdName)) {
         return false;
     }
 
-    if (computedHMAC.size() != recvHMAC.size()) {
+    if (computedHMAC.size() != HMACSize) {
         return false;
     }
 
-    return CRYPTO_memcmp(computedHMAC.data(), recvHMAC.data(), recvHMAC.size()) == 0;
+    return CRYPTO_memcmp(computedHMAC.data(), recvHMAC, HMACSize) == 0;
 
 }
 
