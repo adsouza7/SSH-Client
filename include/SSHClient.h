@@ -11,10 +11,14 @@
 #define MAX_PACKET_SIZE 32768
 
 // Message Numbers
-#define SSH_MSG_KEXINIT     20
-#define SSH_MSG_NEWKEYS     21
-#define SSH_MSG_KEXDH_INIT  30
-#define SSH_MSG_KEXDH_REPLY 31
+#define SSH_MSG_KEXINIT             20
+#define SSH_MSG_NEWKEYS             21
+#define SSH_MSG_KEXDH_INIT          30
+#define SSH_MSG_KEXDH_REPLY         31
+#define SSH_MSG_SERVICE_REQUEST     5
+#define SSH_MSG_SERVICE_ACCEPT      6
+#define SSH_MSG_USERAUTH_REQUEST    50
+#define SSH_MSG_USERAUTH_SUCCESS    51
 
 
 extern const std::string kex_algos;
@@ -35,6 +39,8 @@ class SSHClient {
         ~SSHClient(); /* Close socket */
 
         int serverConnect();
+        int AuthenticateUser(std::string& username, std::string& password);
+
         int sendPacket(Packet* packet);
         Packet* receivePacket();
         int serverDisconnect();
@@ -45,6 +51,8 @@ class SSHClient {
         bool encryptPackets = false;
         uint32_t sendSeqNum = 0;
         uint32_t recvSeqNum = 0;
+
+        bool authPhase = false;
 
         // Packet Recv Buffer
         std::queue<Packet*> packetRecvQ;
@@ -84,6 +92,8 @@ class SSHClient {
         // Crypto Objects
         EVP_PKEY* client_dh_keypair = nullptr;
         EVP_PKEY* server_dh_pubkey = nullptr;
+        EVP_CIPHER_CTX* encCTX = nullptr;
+        EVP_CIPHER_CTX* decCTX = nullptr;
 
         // Crypto Pointers
         EVP_PKEY* (*DHKeyGen)();
@@ -92,16 +102,19 @@ class SSHClient {
         EVP_PKEY* (*ExtractServerKey)(std::vector<uint8_t>&);
         int (*VerifySignature)(EVP_PKEY* key, std::vector<uint8_t>& hash,
             std::vector<uint8_t>& signature);
-        bool (*Encrypt)(const uint8_t*,
+        bool (*Encrypt)(EVP_CIPHER_CTX**,
+                        const uint8_t*,
                         const int,
                         const std::vector<uint8_t>&,
                         const std::vector<uint8_t>&,
                         std::vector<uint8_t>&);
-        bool (*Decrypt)(const uint8_t*,
+        bool (*Decrypt)(EVP_CIPHER_CTX**,
+                        const uint8_t*,
                         const int,
                         const std::vector<uint8_t>&,
                         const std::vector<uint8_t>&,
-                        std::vector<uint8_t>&);
+                        std::vector<uint8_t>&,
+                        EVP_CIPHER_CTX**);
 
 
 

@@ -3,7 +3,8 @@
 #include <vector>
 #include <iostream>
 
-bool EncryptAES128(const uint8_t* plaintext,
+bool EncryptAES128(EVP_CIPHER_CTX** encCTX,
+                  const uint8_t* plaintext,
                   const int plaintextSize,
                   const std::vector<uint8_t>& key,
                   const std::vector<uint8_t>& iv,
@@ -16,48 +17,50 @@ bool EncryptAES128(const uint8_t* plaintext,
         return false;
     }
 
-    EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
-    if (!ctx) { 
-        ERR_print_errors_fp(stderr);
-        return false;
+    if (*encCTX == nullptr) {
+        *encCTX = EVP_CIPHER_CTX_new();
+        if (!*encCTX) { 
+            ERR_print_errors_fp(stderr);
+            return false;
+        }
+
+        if (!EVP_CipherInit_ex2(*encCTX, EVP_aes_128_ctr(), key.data(), iv.data(), 1,
+            nullptr)) {
+
+            ERR_print_errors_fp(stderr);
+            return false;
+        }
+
+        EVP_CIPHER_CTX_set_padding(*encCTX, 0);
+
     }
 
-    if (!EVP_CipherInit_ex2(ctx, EVP_aes_128_ctr(), key.data(), iv.data(), 1,
-        nullptr)) {
-
-        ERR_print_errors_fp(stderr);
-        EVP_CIPHER_CTX_free(ctx);
-        return false;
-    }
-
-    EVP_CIPHER_CTX_set_padding(ctx, 0);
-
+    
     ciphertext.resize(outputLen);
-    if (!EVP_CipherUpdate(ctx, ciphertext.data(), &outputLen, plaintext,
+    if (!EVP_CipherUpdate(*encCTX, ciphertext.data(), &outputLen, plaintext,
         plaintextSize)) {
     
         ERR_print_errors_fp(stderr);
-        EVP_CIPHER_CTX_free(ctx);
         return false;
     }
 
-    if (!EVP_CipherFinal_ex(ctx, ciphertext.data(), &outputLen)) { 
+    if (!EVP_CipherFinal_ex(*encCTX, ciphertext.data(), &outputLen)) { 
         ERR_print_errors_fp(stderr);
-        EVP_CIPHER_CTX_free(ctx);
         return false;
     }
 
-    EVP_CIPHER_CTX_free(ctx);
     return true;
 
 }
 
 
-bool DecryptAES128(const uint8_t* ciphertext,
+bool DecryptAES128(EVP_CIPHER_CTX** decCTX,
+                  const uint8_t* ciphertext,
                   const int ciphertextSize,
                   const std::vector<uint8_t>& key,
                   const std::vector<uint8_t>& iv,
-                  std::vector<uint8_t>& plaintext){
+                  std::vector<uint8_t>& plaintext,
+                  EVP_CIPHER_CTX** ctxOut){
 
     int outputLen = ciphertextSize;
 
@@ -66,44 +69,56 @@ bool DecryptAES128(const uint8_t* ciphertext,
         return false;
     }
 
-    EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
-    if (!ctx) { 
-        ERR_print_errors_fp(stderr);
-        return false;
+    if (*decCTX == nullptr) {
+        *decCTX = EVP_CIPHER_CTX_new();
+        if (!*decCTX) { 
+            ERR_print_errors_fp(stderr);
+            return false;
+        }
+
+        if (!EVP_CipherInit_ex2(*decCTX, EVP_aes_128_ctr(), key.data(), iv.data(), 0,
+            nullptr)) {
+
+            ERR_print_errors_fp(stderr);
+            return false;
+        }
+
+        EVP_CIPHER_CTX_set_padding(*decCTX, 0);
+
     }
 
-    if (!EVP_CipherInit_ex2(ctx, EVP_aes_128_ctr(), key.data(), iv.data(), 0,
-        nullptr)) {
+    if (ctxOut) {
+        if (*ctxOut == nullptr) {
+            *ctxOut = EVP_CIPHER_CTX_new();
+            if (!*ctxOut) {
+                ERR_print_errors_fp(stderr);
+                return false;
+            }
 
-        ERR_print_errors_fp(stderr);
-        EVP_CIPHER_CTX_free(ctx);
-        return false;
+        }
+        std::cout << EVP_CIPHER_CTX_copy(*ctxOut, *decCTX) << std::endl;
     }
-
-    EVP_CIPHER_CTX_set_padding(ctx, 0);
 
     plaintext.resize(outputLen);
-    if (!EVP_CipherUpdate(ctx, plaintext.data(), &outputLen, ciphertext,
+    if (!EVP_CipherUpdate(*decCTX, plaintext.data(), &outputLen, ciphertext,
         ciphertextSize)) {
     
         ERR_print_errors_fp(stderr);
-        EVP_CIPHER_CTX_free(ctx);
         return false;
     }
 
-    if (!EVP_CipherFinal_ex(ctx, plaintext.data(), &outputLen)) { 
+    if (!EVP_CipherFinal_ex(*decCTX, plaintext.data(), &outputLen)) { 
         ERR_print_errors_fp(stderr);
-        EVP_CIPHER_CTX_free(ctx);
         return false;
     }
 
-    EVP_CIPHER_CTX_free(ctx);
     return true;
 
 }
 
 
-bool EncryptAES256(const uint8_t* plaintext,
+bool EncryptAES256(EVP_CIPHER_CTX** encCTX,
+                  const uint8_t* plaintext,
                   const int plaintextSize,
                   const std::vector<uint8_t>& key,
                   const std::vector<uint8_t>& iv,
@@ -116,48 +131,50 @@ bool EncryptAES256(const uint8_t* plaintext,
         return false;
     }
 
-    EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
-    if (!ctx) { 
-        ERR_print_errors_fp(stderr);
-        return false;
+    if (*encCTX == nullptr) {
+        *encCTX = EVP_CIPHER_CTX_new();
+        if (!*encCTX) { 
+            ERR_print_errors_fp(stderr);
+            return false;
+        }
+
+        if (!EVP_CipherInit_ex2(*encCTX, EVP_aes_256_ctr(), key.data(), iv.data(), 1,
+            nullptr)) {
+
+            ERR_print_errors_fp(stderr);
+            return false;
+        }
+
+        EVP_CIPHER_CTX_set_padding(*encCTX, 0);
+
     }
 
-    if (!EVP_CipherInit_ex2(ctx, EVP_aes_256_ctr(), key.data(), iv.data(), 1,
-        nullptr)) {
-
-        ERR_print_errors_fp(stderr);
-        EVP_CIPHER_CTX_free(ctx);
-        return false;
-    }
-
-    EVP_CIPHER_CTX_set_padding(ctx, 0);
-
+    
     ciphertext.resize(outputLen);
-    if (!EVP_CipherUpdate(ctx, ciphertext.data(), &outputLen, plaintext,
+    if (!EVP_CipherUpdate(*encCTX, ciphertext.data(), &outputLen, plaintext,
         plaintextSize)) {
     
         ERR_print_errors_fp(stderr);
-        EVP_CIPHER_CTX_free(ctx);
         return false;
     }
 
-    if (!EVP_CipherFinal_ex(ctx, ciphertext.data(), &outputLen)) { 
+    if (!EVP_CipherFinal_ex(*encCTX, ciphertext.data(), &outputLen)) { 
         ERR_print_errors_fp(stderr);
-        EVP_CIPHER_CTX_free(ctx);
         return false;
     }
 
-    EVP_CIPHER_CTX_free(ctx);
     return true;
 
 }
 
 
-bool DecryptAES256(const uint8_t* ciphertext,
+bool DecryptAES256(EVP_CIPHER_CTX** decCTX,
+                  const uint8_t* ciphertext,
                   const int ciphertextSize,
                   const std::vector<uint8_t>& key,
                   const std::vector<uint8_t>& iv,
-                  std::vector<uint8_t>& plaintext){
+                  std::vector<uint8_t>& plaintext,
+                  EVP_CIPHER_CTX** ctxOut){
 
     int outputLen = ciphertextSize;
 
@@ -166,38 +183,42 @@ bool DecryptAES256(const uint8_t* ciphertext,
         return false;
     }
 
-    EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
-    if (!ctx) { 
-        ERR_print_errors_fp(stderr);
-        return false;
+    if (*decCTX == nullptr) {
+        *decCTX = EVP_CIPHER_CTX_new();
+        if (!*decCTX) { 
+            ERR_print_errors_fp(stderr);
+            return false;
+        }
+
+        if (!EVP_CipherInit_ex2(*decCTX, EVP_aes_256_ctr(), key.data(), iv.data(), 0,
+            nullptr)) {
+
+            ERR_print_errors_fp(stderr);
+            return false;
+        }
+
+        EVP_CIPHER_CTX_set_padding(*decCTX, 0);
+
     }
 
-    if (!EVP_CipherInit_ex2(ctx, EVP_aes_128_ctr(), key.data(), iv.data(), 0,
-        nullptr)) {
-
-        ERR_print_errors_fp(stderr);
-        EVP_CIPHER_CTX_free(ctx);
-        return false;
+    if (ctxOut) {
+        EVP_CIPHER_CTX_copy(*ctxOut, *decCTX);
     }
-
-    EVP_CIPHER_CTX_set_padding(ctx, 0);
 
     plaintext.resize(outputLen);
-    if (!EVP_CipherUpdate(ctx, plaintext.data(), &outputLen, ciphertext,
+    if (!EVP_CipherUpdate(*decCTX, plaintext.data(), &outputLen, ciphertext,
         ciphertextSize)) {
     
         ERR_print_errors_fp(stderr);
-        EVP_CIPHER_CTX_free(ctx);
         return false;
     }
 
-    if (!EVP_CipherFinal_ex(ctx, plaintext.data(), &outputLen)) { 
+    if (!EVP_CipherFinal_ex(*decCTX, plaintext.data(), &outputLen)) { 
         ERR_print_errors_fp(stderr);
-        EVP_CIPHER_CTX_free(ctx);
         return false;
     }
 
-    EVP_CIPHER_CTX_free(ctx);
     return true;
 
 }
+
