@@ -121,49 +121,33 @@ Packet* SSHClient::receivePacket() {
                 // First block of ciphertext (replace 16 w/ var later)
                 std::vector<uint8_t> temp;
                 std::vector<uint8_t> decBytes;
+                uint8_t *packetBytes, *HMACBytes;
 
                 while (curr < recvLen) {
                     
                     // Decrypt first block of enc packet to get packet length
-                    temp.assign(recvData.begin() + curr, recvData.begin() + curr + 16);
-                    Decrypt(temp.data(), temp.size(), encKeyStoC, IVKeyStoC, decBytes);
+                    packetBytes = recvData.data() + curr;
+                    Decrypt(packetBytes, 16, encKeyStoC, IVKeyStoC, decBytes);
                     packetLen = ntohl(*((uint32_t*)(decBytes.data() + curr)));
+                    paddingLen = *(decBytes.data() + 4);
                     
                     // Decrypt entire packet
-                    temp.assign(recvData.begin() + curr, 
-                                recvData.begin() + curr + packetLen + 4);
-                    Decrypt(temp.data(), temp.size(), encKeyStoC, IVKeyStoC, decBytes);
+                    Decrypt(packetBytes, packetLen + 4, encKeyStoC, IVKeyStoC, decBytes);
                     
                     // Extract HMAC bytes
-                    temp.assign(recvData.begin() + curr + packetLen + 4,
-                                recvData.begin() + curr + packetLen + 4 + macKeySize);
+                    HMACBytes = packetBytes + packetLen + 4;
+                    
+                    if (VerifyHMAC(macKeyStoC, recvSeqNum, decBytes.data(),
+                        decBytes.size(), HMACBytes, macKeySize, macMD)) {
+                        
+                        packetRecvQ.push(new Packet((decBytes.data() + 5), packetLen - paddingLen - 1));
+                        recvSeqNum++;
+                    }
 
-                    int test = VerifyHMAC(macKeyStoC, recvSeqNum,
-                                          decBytes.data(), decBytes.size(),
-                                          temp.data(), temp.size(), macMD);
-
-                    std::cout << "Verify: " << test << std::endl;
-
-                    break;
-
-                    /*VerifyHMAC(:vector<uint8_t>& key, uint32_t seqNum,
-              const std::vector<uint8_t>& packet,
-              const std::vector<uint8_t>& recvHMAC, const std::string& mdName);
-*/
-
-
+                    curr += packetLen + 4 + macKeySize;
 
                 }
                 
-                /*
-                std::cout << "Size: " << packetLen << std::endl;
-
-                std::cout << "MSG: " << decBytes.data() + 5 << std::endl;
-                */
-                print_hex(decBytes, decBytes.size());
-                return nullptr;
-
-
             }
             else {
  
@@ -299,7 +283,8 @@ int SSHClient::serverConnect() {
 
     sendPacket(&test);
 
-    receivePacket();
+    recvPacket = receivePacket();
+    print_hex(recvPacket->buffer, recvPacket->buffer.size());
 
 
     return 0;
