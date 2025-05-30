@@ -23,6 +23,8 @@ struct Packet {
     void addWord(uint32_t word);
     void addMPInt(std::vector<uint8_t>& byteArr);
     void addRawString(const std::string& str);
+    void addString(const char* string);
+    void addBool(bool value);
 
     template <typename Container>
     void addString(const Container& data) {

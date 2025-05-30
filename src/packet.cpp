@@ -1,4 +1,5 @@
 #include <packet.h>
+#include <cstring>
 
 
 uint8_t Packet::cipherBlockSize = 8;
@@ -31,6 +32,22 @@ void Packet::addMPInt(std::vector<uint8_t>& byteArr) {
 void Packet::addRawString(const std::string& str) {
     buffer.insert(buffer.end(), str.begin(), str.end());
 }
+
+void Packet::addString(const char* string) {
+    this->addWord(strlen(string));
+    buffer.insert(buffer.end(), string, string + strlen(string));
+}
+
+void Packet::addBool(bool value) {
+    
+    if (value) {
+        this->addByte(1);
+    }
+    else {
+        this->addByte(0);
+    }
+}
+
 
 uint8_t Packet::getMessageCode() {
     return buffer[0];
