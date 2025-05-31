@@ -11,15 +11,17 @@
 #define MAX_PACKET_SIZE 32768
 
 // Message Numbers
-#define SSH_MSG_KEXINIT             20
-#define SSH_MSG_NEWKEYS             21
-#define SSH_MSG_KEXDH_INIT          30
-#define SSH_MSG_KEXDH_REPLY         31
-#define SSH_MSG_SERVICE_REQUEST     5
-#define SSH_MSG_SERVICE_ACCEPT      6
-#define SSH_MSG_USERAUTH_REQUEST    50
-#define SSH_MSG_USERAUTH_SUCCESS    51
-
+#define SSH_MSG_KEXINIT                     20
+#define SSH_MSG_NEWKEYS                     21
+#define SSH_MSG_KEXDH_INIT                  30
+#define SSH_MSG_KEXDH_REPLY                 31
+#define SSH_MSG_SERVICE_REQUEST             5
+#define SSH_MSG_SERVICE_ACCEPT              6
+#define SSH_MSG_USERAUTH_REQUEST            50
+#define SSH_MSG_USERAUTH_SUCCESS            52
+#define SSH_MSG_CHANNEL_OPEN                90
+#define SSH_MSG_CHANNEL_OPEN_CONFIRMATION   91
+#define SSH_MSG_CHANNEL_DATA                94
 
 extern const std::string kex_algos;
 extern const std::string server_host_key_algos;
@@ -40,6 +42,7 @@ class SSHClient {
 
         int serverConnect();
         int AuthenticateUser(std::string& username, std::string& password);
+        int StartTerminal();
 
         int sendPacket(Packet* packet);
         Packet* receivePacket();

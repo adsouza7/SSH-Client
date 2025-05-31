@@ -131,7 +131,7 @@ Packet* SSHClient::receivePacket() {
 
                     Decrypt(&decCTX, packetBytes, 16, encKeyStoC, IVKeyStoC,
                             decBytes);
-                    packetLen = ntohl(*((uint32_t*)(decBytes.data() + curr)));
+                    packetLen = ntohl(*((uint32_t*)(decBytes.data())));
                     paddingLen = *(decBytes.data() + 4);
                     
                     // Decrypt entire packet
@@ -318,18 +318,83 @@ int SSHClient::AuthenticateUser(std::string& username, std::string& password) {
     authReq.addBool(false);
     authReq.addString(password);
 
-    std::vector<uint8_t> temp;
-    authReq.serializePacket(temp);
-
     sendPacket(&authReq);
 
     recvPacket = receivePacket();
+    if (recvPacket->getMessageCode() != SSH_MSG_USERAUTH_SUCCESS){
+        std::cerr << "Incorrect password" << std::endl;
+        delete recvPacket;
+        return 0;
+    }
 
-    print_hex(recvPacket->buffer, recvPacket->buffer.size());
+    delete recvPacket;
 
+    // Ignore password change req from server
+    recvPacket = receivePacket();
+    delete recvPacket;
+
+   
     return 1;
 
 }
+
+
+int SSHClient::StartTerminal() {
+   
+    // Construct channel open request packet
+    Packet* recvPacket;
+    Packet channelReq;
+
+    channelReq.addByte(SSH_MSG_CHANNEL_OPEN);
+    channelReq.addString("session");
+    channelReq.addWord(0); // sender channel id
+    channelReq.addWord(2097152); // 2MB initial window size
+    channelReq.addWord(16384);  // 16384KB max packet size
+   
+    sendPacket(&channelReq);
+
+    // Server reply
+    recvPacket = receivePacket();
+    if (recvPacket->getMessageCode() != SSH_MSG_CHANNEL_OPEN_CONFIRMATION) {
+        std::cerr << "Failed to open channel" << std::endl;
+        delete recvPacket;
+        return 0;
+    }
+    delete recvPacket;
+
+    /*
+    // EXE
+    Packet exec;
+    exec.addByte(98);
+    exec.addWord(0);
+    exec.addString("exec");
+    exec.addBool(true);
+    exec.addString("uname");
+
+    sendPacket(&exec);
+    recvPacket = receivePacket();
+    print_hex(recvPacket->buffer, recvPacket->buffer.size());
+    delete recvPacket;
+
+    recvPacket = receivePacket();
+    print_hex(recvPacket->buffer, recvPacket->buffer.size());
+    delete recvPacket;
+
+    recvPacket = receivePacket();
+    print_hex(recvPacket->buffer, recvPacket->buffer.size());
+    delete recvPacket;
+
+    recvPacket = receivePacket();
+    print_hex(recvPacket->buffer, recvPacket->buffer.size());
+    delete recvPacket;
+
+    recvPacket = receivePacket();
+    print_hex(recvPacket->buffer, recvPacket->buffer.size());
+    delete recvPacket;
+    */
+ 
+}
+
 
 void SSHClient::parse_kexinit() {
 
