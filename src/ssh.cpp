@@ -8,7 +8,7 @@ int main() {
     std::string p;
 
     try {
-        client = SSHClient("aaron-tc");
+        client = SSHClient("tux5.usask.ca");
         client.serverConnect();
 
         std::cout << "Username: ";

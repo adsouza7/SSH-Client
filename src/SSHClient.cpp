@@ -362,16 +362,65 @@ int SSHClient::StartTerminal() {
     }
     delete recvPacket;
 
-    /*
-    // EXE
-    Packet exec;
-    exec.addByte(98);
-    exec.addWord(0);
-    exec.addString("exec");
-    exec.addBool(true);
-    exec.addString("uname");
+    // Request Pseudo Terminal
+    Packet terminalReq;
+    terminalReq.addByte(SSH_MSG_CHANNEL_REQUEST);
+    terminalReq.addWord(0);
+    terminalReq.addString("pty-req");
+    terminalReq.addBool(true);
+    terminalReq.addString("xterm-256color"); // term env var
+    terminalReq.addWord(80); // chars/line
+    terminalReq.addWord(24); // rows
+    terminalReq.addWord(640); // width
+    terminalReq.addWord(480); // height
+    terminalReq.addString("\x00"); // No terminal modes
 
-    sendPacket(&exec);
+    sendPacket(&terminalReq);
+    int msgCode = 0;
+    do {
+        recvPacket = receivePacket();
+        msgCode = recvPacket->getMessageCode();
+        std::cout << "Code: " << std::dec << msgCode << std::endl;
+        delete recvPacket;
+    } while(msgCode != SSH_MSG_CHANNEL_SUCCESS);
+
+    Packet shellReq;
+    shellReq.addByte(SSH_MSG_CHANNEL_REQUEST);
+    shellReq.addWord(0);
+    shellReq.addString("shell");
+    shellReq.addBool(true);
+
+    sendPacket(&shellReq);
+    msgCode = 0;
+    do {
+        recvPacket = receivePacket();
+        msgCode = recvPacket->getMessageCode();
+        std::cout << "Code: " << std::dec << msgCode << std::endl;
+        delete recvPacket;
+    } while(msgCode != SSH_MSG_CHANNEL_SUCCESS);
+
+    
+    Packet test;
+    test.addByte(SSH_MSG_CHANNEL_DATA);
+    test.addWord(0);
+    test.addString("clear\n");
+    sendPacket(&test);
+
+    uint32_t size = 0;
+    do {
+        recvPacket = receivePacket();
+        if (recvPacket->getMessageCode() == SSH_MSG_CHANNEL_DATA) {
+            size = ntohl(*((uint32_t*)(recvPacket->buffer.data() + 5)));
+            std::string result(reinterpret_cast<const char*>(recvPacket->buffer.data() + 9), size);
+
+            std::cout << result;
+        }
+    } while (recvPacket);
+
+
+
+
+    /*
     recvPacket = receivePacket();
     print_hex(recvPacket->buffer, recvPacket->buffer.size());
     delete recvPacket;

@@ -22,6 +22,9 @@
 #define SSH_MSG_CHANNEL_OPEN                90
 #define SSH_MSG_CHANNEL_OPEN_CONFIRMATION   91
 #define SSH_MSG_CHANNEL_DATA                94
+#define SSH_MSG_CHANNEL_REQUEST             98
+#define SSH_MSG_CHANNEL_SUCCESS             99
+#define SSH_MSG_CHANNEL_DATA                94
 
 extern const std::string kex_algos;
 extern const std::string server_host_key_algos;
