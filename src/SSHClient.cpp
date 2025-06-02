@@ -380,7 +380,6 @@ int SSHClient::StartTerminal() {
     do {
         recvPacket = receivePacket();
         msgCode = recvPacket->getMessageCode();
-        std::cout << "Code: " << std::dec << msgCode << std::endl;
         delete recvPacket;
     } while(msgCode != SSH_MSG_CHANNEL_SUCCESS);
 
@@ -395,7 +394,6 @@ int SSHClient::StartTerminal() {
     do {
         recvPacket = receivePacket();
         msgCode = recvPacket->getMessageCode();
-        std::cout << "Code: " << std::dec << msgCode << std::endl;
         delete recvPacket;
     } while(msgCode != SSH_MSG_CHANNEL_SUCCESS);
 
@@ -417,31 +415,8 @@ int SSHClient::StartTerminal() {
         }
     } while (recvPacket);
 
+    return 1;
 
-
-
-    /*
-    recvPacket = receivePacket();
-    print_hex(recvPacket->buffer, recvPacket->buffer.size());
-    delete recvPacket;
-
-    recvPacket = receivePacket();
-    print_hex(recvPacket->buffer, recvPacket->buffer.size());
-    delete recvPacket;
-
-    recvPacket = receivePacket();
-    print_hex(recvPacket->buffer, recvPacket->buffer.size());
-    delete recvPacket;
-
-    recvPacket = receivePacket();
-    print_hex(recvPacket->buffer, recvPacket->buffer.size());
-    delete recvPacket;
-
-    recvPacket = receivePacket();
-    print_hex(recvPacket->buffer, recvPacket->buffer.size());
-    delete recvPacket;
-    */
- 
 }
 
 
