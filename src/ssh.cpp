@@ -1,14 +1,47 @@
 #include <SSHClient.h>
+#include <pthread.h>
 #include <iostream>
+
+pthread_t managerPID;
+pthread_t printPID;
+pthread_t inputPID;
+pthread_t sendPID;
+pthread_t recvPID;
+
+void* Manager(void*) {
+    std::cout << "Hi from Manager" << std::endl;
+    return nullptr;
+};
+
+void* SSHRecv(void*) { 
+    std::cout << "Hi from Recv" << std::endl;
+    return nullptr;
+};
+
+void* SSHSend(void*) { 
+    std::cout << "Hi from Send" << std::endl;
+    return nullptr;
+};
+
+void* KeyboardInput(void*) { 
+    std::cout << "Hi from Keyboard" << std::endl;
+    return nullptr;
+};
+
+void* TerminalOutput(void*) { 
+    std::cout << "Hi from Terminal" << std::endl;
+    return nullptr;
+};
 
 int main() {
 
+    /*
     SSHClient client;
     std::string u;
     std::string p;
 
     try {
-        client = SSHClient("tux5.usask.ca");
+        client = SSHClient("aaron-tc");
         client.serverConnect();
 
         std::cout << "Username: ";
@@ -25,6 +58,38 @@ int main() {
         std::cerr << "Construction failed: " << e.what() << "\n";
     }
     while(1);
+    */
+    int ret;
+
+    ret = pthread_create(&managerPID, nullptr, &Manager, nullptr);
+    if (ret) {
+        std::cerr << "Failed to create manager thread!" << std::endl;
+        return 1;
+    }
+
+    ret = pthread_create(&recvPID, nullptr, &SSHRecv, nullptr);
+    if (ret) {
+        std::cerr << "Failed to create packet recv thread!" << std::endl;
+        return 1;
+    }
+
+    ret = pthread_create(&inputPID, nullptr, &KeyboardInput, nullptr);
+    if (ret) {
+        std::cerr << "Failed to create keyboard input thread!" << std::endl;
+        return 1;
+    }
+
+    ret = pthread_create(&printPID, nullptr, &TerminalOutput, nullptr);
+    if (ret) {
+        std::cerr << "Failed to create terminal output thread!" << std::endl;
+        return 1;
+    }
+
+    ret = pthread_create(&sendPID, nullptr, &SSHSend, nullptr);
+    if (ret) {
+        std::cerr << "Failed to create packet send thread!" << std::endl;
+        return 1;
+    }
 
     return 0;
 }
