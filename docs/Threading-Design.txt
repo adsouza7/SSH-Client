@@ -1,0 +1,62 @@
+>>> LISTS
+printList + mutex
+SendList + mutex
+ManagerList + mutex
+
+>>> Semaphores
+SendSem
+PrintSem
+ManagerSem
+
+>>> Threads
+Manager {
+
+	P(ManagerSem)
+	
+	P(ManagerList)
+		cmd = remove(ManagerList)
+	V(ManagerList)
+	
+	
+	if (cmd from recv) {
+		P(printList)
+			add
+		V(printList)
+		V(PrintSem)
+	}
+	
+	if (cmd from input) {
+		P(sendList)
+			add
+		V(sendList)
+		V(SendSem)
+	}
+	
+	
+}
+
+Send {
+	P(SendSem)
+	send whatever
+}
+
+Recv {
+	recv()
+	P(ManagerList)
+		add
+	V(ManagerList)
+	V(ManagerSem)
+}
+
+Print {
+	P(PrintSem)
+	Print whatever
+}
+
+Input {
+	read()
+	P(ManagerList)
+		add
+	V(ManagerList)
+	V(ManagerSem)
+}
