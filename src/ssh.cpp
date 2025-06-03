@@ -21,7 +21,7 @@ sem_t managerSem;   // Used to wakeup/yield Manager
 
 // Mutexes
 sem_t printQMutex;
-sem_t sendQMustex;
+sem_t sendQMutex;
 sem_t managerQMutex;
 
 // Messages to be sent to manager
@@ -37,7 +37,28 @@ std::queue<Message> managerQ;
 
 
 void* Manager(void*) {
-    std::cout << "Hi from Manager" << std::endl;
+    
+    Message recvMsg;
+    std::string *c;
+    
+    while (1) {
+
+        sem_wait(&managerSem);
+
+        sem_wait(&managerQMutex);
+        recvMsg = managerQ.front();
+        managerQ.pop();
+        sem_post(&managerQMutex);
+
+        if (recvMsg.fromPid == inputPID) {
+            c = static_cast<std::string*>(recvMsg.content);
+            std::cout << "Manager Received: " << *c << std::endl;
+        }
+
+        usleep(10);
+
+    }
+
     return nullptr;
 };
 
@@ -52,12 +73,42 @@ void* SSHSend(void*) {
 };
 
 void* KeyboardInput(void*) { 
-    std::cout << "Hi from Keyboard" << std::endl;
+    
+    char buf[100];
+    int n_bytes;
+    Message msg;
+    msg.fromPid = pthread_self();
+
+
+    while (1) {    
+        
+        n_bytes = read(STDIN_FILENO, buf, sizeof(buf) - 1);
+        if (n_bytes > 0) {
+            buf[n_bytes-1] = '\0';
+            msg.content = new std::string(buf);
+
+            std::cout << "Sending: " << *((std::string*)(msg.content))<< std::endl;
+
+            // Add to manager queue
+            sem_wait(&managerQMutex);
+            managerQ.push(msg);
+            sem_post(&managerQMutex);
+
+            // wakeup manager
+            sem_post(&managerSem);
+        }
+
+        usleep(10);
+
+        
+    }
+
     return nullptr;
 };
 
 void* TerminalOutput(void*) { 
-    std::cout << "Hi from Terminal" << std::endl;
+    
+    
     return nullptr;
 };
 
@@ -99,6 +150,32 @@ int main() {
 
     if (fcntl(STDIN_FILENO, F_SETFL, stdinFlags | O_NONBLOCK) == -1) {
         std::cerr << "Failed to set STDIN flags" << std::endl;
+        return 1;
+    }
+
+    // Initialize Semaphores
+    if (sem_init(&sendSem, 0, 0) == -1) {
+        std::cerr << "Failed to init sendSem!" << std::endl;
+        return 1;
+    }
+    if (sem_init(&printSem, 0, 0) == -1) {
+        std::cerr << "Failed to init printSem!" << std::endl;
+        return 1;
+    }
+    if (sem_init(&managerSem, 0, 0) == -1) {
+        std::cerr << "Failed to init managerSem!" << std::endl;
+        return 1;
+    }
+    if (sem_init(&printQMutex, 0, 1) == -1) {
+        std::cerr << "Failed to init printQMutex!" << std::endl;
+        return 1;
+    }
+    if (sem_init(&sendQMutex, 0, 1) == -1) {
+        std::cerr << "Failed to init sendQMutex!" << std::endl;
+        return 1;
+    }
+    if (sem_init(&managerQMutex, 0, 1) == -1) {
+        std::cerr << "Failed to init managerQMutex!" << std::endl;
         return 1;
     }
 
@@ -166,7 +243,6 @@ int main() {
         std::cerr << "Failed to set STDIN flags" << std::endl;
         return 1;
     }
-
-
+    
     return 0;
 }
