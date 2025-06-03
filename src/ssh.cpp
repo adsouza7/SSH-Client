@@ -8,6 +8,8 @@
 #include <unistd.h>
 #include <termios.h>
 
+#include <netdb.h>
+#include <arpa/inet.h>
 
 SSHClient client;
 
@@ -89,6 +91,27 @@ void* Manager(void*) {
             sem_post(&sendSem);
 
         }
+        
+        if (recvMsg.fromPid == recvPID) {
+            Packet* packet;
+            uint32_t size = 0;
+            packet = (Packet*)(recvMsg.content);
+
+            if (packet->getMessageCode() == SSH_MSG_CHANNEL_DATA) {
+                size = ntohl(*((uint32_t*)(packet->buffer.data() + 5)));
+                std::string result(reinterpret_cast<const char*>(packet->buffer.data() + 9), size);
+
+                sem_wait(&printQMutex);
+                printQ.push(result);
+                sem_post(&printQMutex);
+
+                sem_post(&printSem);
+
+            }
+            
+            delete packet;
+
+        }
 
         usleep(10);
 
@@ -98,7 +121,31 @@ void* Manager(void*) {
 };
 
 void* SSHRecv(void*) { 
-    std::cout << "Hi from Recv" << std::endl;
+    
+    Packet* recv = nullptr;
+    Message msg;
+    msg.fromPid = pthread_self();
+
+    while (1) {
+        
+        recv = client.receivePacket();
+
+        if (recv) {
+            
+            msg.content = recv;
+
+            sem_wait(&managerQMutex);
+            managerQ.push(msg);
+            sem_post(&managerQMutex);
+
+            sem_post(&managerSem);
+        }
+        else { 
+            usleep(10);
+        }
+
+
+    }
     return nullptr;
 };
 
@@ -138,8 +185,6 @@ void* KeyboardInput(void*) {
         if (n_bytes > 0) {
             msg.content = new std::string(1, buf);
 
-            std::cout << "Sending: " << *((std::string*)(msg.content))<< std::endl;
-
             // Add to manager queue
             sem_wait(&managerQMutex);
             managerQ.push(msg);
@@ -159,6 +204,21 @@ void* KeyboardInput(void*) {
 
 void* TerminalOutput(void*) { 
     
+    std::string output;
+
+    while(1) {
+        sem_wait(&printSem);
+
+        sem_wait(&printQMutex);
+        output = printQ.front();
+        printQ.pop();
+        sem_post(&printQMutex);
+
+        std::cout << output << std::flush;
+
+        usleep(10);
+    }
+
     
     return nullptr;
 };

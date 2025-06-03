@@ -10,6 +10,9 @@
 #include <unordered_set>
 #include <cstdlib>
 #include <ctime>
+#include <fcntl.h>
+#include <unistd.h>
+
 
 #include <iostream>
 #include <iomanip>
@@ -332,8 +335,7 @@ int SSHClient::AuthenticateUser(std::string& username, std::string& password) {
     // Ignore password change req from server
     recvPacket = receivePacket();
     delete recvPacket;
-
-   
+ 
     return 1;
 
 }
@@ -397,7 +399,18 @@ int SSHClient::StartTerminal() {
         delete recvPacket;
     } while(msgCode != SSH_MSG_CHANNEL_SUCCESS);
 
-    
+    // Set socket to non blocking
+    sockFlags = fcntl(sockFD, F_GETFL, 0);
+    if (sockFlags == -1) {
+        std::cerr << "Failed to get socket flags" << std::endl;
+        return 1;
+    }
+
+    if (fcntl(sockFD, F_SETFL, sockFlags | O_NONBLOCK) == -1) {
+        std::cerr << "Failed to set socket flags" << std::endl;
+        return 1;
+    }
+
     return 1;
 
 }

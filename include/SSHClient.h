@@ -54,6 +54,7 @@ class SSHClient {
 
     private:
         int sockFD = 0;
+        int sockFlags;
         bool encryptPackets = false;
         uint32_t sendSeqNum = 0;
         uint32_t recvSeqNum = 0;
