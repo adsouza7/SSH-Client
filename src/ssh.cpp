@@ -1,4 +1,5 @@
 #include <SSHClient.h>
+#include <packet.h>
 #include <pthread.h>
 #include <semaphore.h>
 #include <iostream>
@@ -115,6 +116,35 @@ int main() {
         std::cerr << "Failed to create packet send thread!" << std::endl;
         return 1;
     }
+
+    // Wait for Manager thread to exit
+    pthread_join(managerPID, nullptr);
+
+    // Kill all other threads
+    ret = pthread_cancel(printPID);
+    if (ret) {
+        std::cerr << "pthread_cancel on printPID failed!" << std::endl;
+        return 1;
+    }
+
+    ret = pthread_cancel(inputPID);
+    if (ret) {
+        std::cerr << "pthread_cancel on inputPID failed!" << std::endl;
+        return 1;
+    }
+
+    ret = pthread_cancel(recvPID);
+    if (ret) {
+        std::cerr << "pthread_cancel on recvPID failed!" << std::endl;
+        return 1;
+    }
+
+    ret = pthread_cancel(sendPID);
+    if (ret) {
+        std::cerr << "pthread_cancel on sendPID failed!" << std::endl;
+        return 1;
+    }
+
 
     return 0;
 }
