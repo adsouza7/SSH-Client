@@ -1,12 +1,37 @@
 #include <SSHClient.h>
 #include <pthread.h>
+#include <semaphore.h>
 #include <iostream>
+#include <queue>
 
+// Thread PIDs
 pthread_t managerPID;
 pthread_t printPID;
 pthread_t inputPID;
 pthread_t sendPID;
 pthread_t recvPID;
+
+// Wakeup/Yield Semaphores
+sem_t sendSem;      // Used to wakeup/yield SSHSend
+sem_t printSem;     // Used to wakeup/yield TerminalOutput
+sem_t managerSem;   // Used to wakeup/yield Manager
+
+// Mutexes
+sem_t printQMutex;
+sem_t sendQMustex;
+sem_t managerQMutex;
+
+// Messages to be sent to manager
+typedef struct {
+    pthread_t fromPid;
+    void* content;
+} Message;
+
+// Queues
+std::queue<std::string> printQ;
+std::queue<Packet*> sendQ;
+std::queue<Message> managerQ;
+
 
 void* Manager(void*) {
     std::cout << "Hi from Manager" << std::endl;
