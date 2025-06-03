@@ -4,6 +4,8 @@
 #include <semaphore.h>
 #include <iostream>
 #include <queue>
+#include <fcntl.h>
+#include <unistd.h>
 
 // Thread PIDs
 pthread_t managerPID;
@@ -86,7 +88,21 @@ int main() {
     while(1);
     */
     int ret;
+    int stdinFlags;
 
+    // Set stdin to non blocking
+    stdinFlags = fcntl(STDIN_FILENO, F_GETFL, 0);
+    if (stdinFlags == -1) {
+        std::cerr << "Failed to get STDIN flags" << std::endl;
+        return 1;
+    }
+
+    if (fcntl(STDIN_FILENO, F_SETFL, stdinFlags | O_NONBLOCK) == -1) {
+        std::cerr << "Failed to set STDIN flags" << std::endl;
+        return 1;
+    }
+
+    // Create threads
     ret = pthread_create(&managerPID, nullptr, &Manager, nullptr);
     if (ret) {
         std::cerr << "Failed to create manager thread!" << std::endl;
@@ -117,7 +133,7 @@ int main() {
         return 1;
     }
 
-    // Wait for Manager thread to exit
+    // Wait for Manager thread to exit - should happen on disconnect msg
     pthread_join(managerPID, nullptr);
 
     // Kill all other threads
@@ -142,6 +158,12 @@ int main() {
     ret = pthread_cancel(sendPID);
     if (ret) {
         std::cerr << "pthread_cancel on sendPID failed!" << std::endl;
+        return 1;
+    }
+
+    // Set std in back to blocking
+    if (fcntl(STDIN_FILENO, F_SETFL, stdinFlags) == -1) {
+        std::cerr << "Failed to set STDIN flags" << std::endl;
         return 1;
     }
 
