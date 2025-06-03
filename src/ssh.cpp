@@ -6,6 +6,7 @@
 #include <queue>
 #include <fcntl.h>
 #include <unistd.h>
+#include <termios.h>
 
 // Thread PIDs
 pthread_t managerPID;
@@ -35,6 +36,27 @@ std::queue<std::string> printQ;
 std::queue<Packet*> sendQ;
 std::queue<Message> managerQ;
 
+struct termios orig_termios;
+
+void disableRawMode() {
+    tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios);
+}
+
+void enableRawMode() {
+
+
+    struct termios raw;
+
+    tcgetattr(STDIN_FILENO, &raw);
+
+    raw.c_iflag &= ~(ICRNL | IXON); // Disable CR-to-NL translation and XON/XOFF
+    //raw.c_oflag &= ~(OPOST);        // Disable post-processing of output
+    raw.c_cflag |= (CS8);           // 8-bit characters
+    raw.c_lflag &= ~(ICANON | IEXTEN);  // Raw input, (no signals), no special processing
+
+    tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
+
+}
 
 void* Manager(void*) {
     
@@ -74,7 +96,7 @@ void* SSHSend(void*) {
 
 void* KeyboardInput(void*) { 
     
-    char buf[100];
+    char buf;
     int n_bytes;
     Message msg;
     msg.fromPid = pthread_self();
@@ -82,10 +104,9 @@ void* KeyboardInput(void*) {
 
     while (1) {    
         
-        n_bytes = read(STDIN_FILENO, buf, sizeof(buf) - 1);
+        n_bytes = read(STDIN_FILENO, &buf, sizeof(buf));
         if (n_bytes > 0) {
-            buf[n_bytes-1] = '\0';
-            msg.content = new std::string(buf);
+            msg.content = new std::string(1, buf);
 
             std::cout << "Sending: " << *((std::string*)(msg.content))<< std::endl;
 
@@ -113,7 +134,18 @@ void* TerminalOutput(void*) {
 };
 
 int main() {
+   
 
+    // Saved original terminal state
+    tcgetattr(STDIN_FILENO, &orig_termios);
+    atexit(disableRawMode);
+
+    // Disable echo
+    struct termios raw = orig_termios;
+    raw.c_lflag &= ~ECHO;  
+    tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
+
+    
     /*
     SSHClient client;
     std::string u;
@@ -131,15 +163,21 @@ int main() {
 
         client.AuthenticateUser(u, p);
 
-        client.StartTerminal();
+        std::cout << "This: " <<p;
+
+        //client.StartTerminal();
     }
     catch (const std::exception& e) {
         std::cerr << "Construction failed: " << e.what() << "\n";
     }
-    while(1);
     */
+    
+    
+    
     int ret;
     int stdinFlags;
+
+    enableRawMode();
 
     // Set stdin to non blocking
     stdinFlags = fcntl(STDIN_FILENO, F_GETFL, 0);
