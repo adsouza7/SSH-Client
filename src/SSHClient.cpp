@@ -398,22 +398,6 @@ int SSHClient::StartTerminal() {
     } while(msgCode != SSH_MSG_CHANNEL_SUCCESS);
 
     
-    Packet test;
-    std::string h = "uname\n";
-    test.constructChannelData(h);
-    sendPacket(&test);
-
-    uint32_t size = 0;
-    do {
-        recvPacket = receivePacket();
-        if (recvPacket->getMessageCode() == SSH_MSG_CHANNEL_DATA) {
-            size = ntohl(*((uint32_t*)(recvPacket->buffer.data() + 5)));
-            std::string result(reinterpret_cast<const char*>(recvPacket->buffer.data() + 9), size);
-
-            std::cout << result;
-        }
-    } while (recvPacket);
-
     return 1;
 
 }

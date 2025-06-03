@@ -8,6 +8,9 @@
 #include <unistd.h>
 #include <termios.h>
 
+
+SSHClient client;
+
 // Thread PIDs
 pthread_t managerPID;
 pthread_t printPID;
@@ -62,6 +65,7 @@ void* Manager(void*) {
     
     Message recvMsg;
     std::string *c;
+    Packet* sendPacket;
     
     while (1) {
 
@@ -74,7 +78,16 @@ void* Manager(void*) {
 
         if (recvMsg.fromPid == inputPID) {
             c = static_cast<std::string*>(recvMsg.content);
-            std::cout << "Manager Received: " << *c << std::endl;
+            
+            sendPacket = new Packet();
+            sendPacket->constructChannelData(*c);
+
+            sem_wait(&sendQMutex);
+            sendQ.push(sendPacket);
+            sem_post(&sendQMutex);
+
+            sem_post(&sendSem);
+
         }
 
         usleep(10);
@@ -90,7 +103,24 @@ void* SSHRecv(void*) {
 };
 
 void* SSHSend(void*) { 
-    std::cout << "Hi from Send" << std::endl;
+    
+    Packet* packet;
+
+    while(1) {
+        sem_wait(&sendSem);
+
+        sem_wait(&sendQMutex);
+        packet = sendQ.front();
+        sendQ.pop();
+        sem_post(&sendQMutex);
+
+        client.sendPacket(packet);
+
+        delete packet;
+
+        usleep(10);
+    }
+
     return nullptr;
 };
 
@@ -147,7 +177,6 @@ int main() {
 
     
     
-    SSHClient client;
     std::string u;
     std::string p;
 
