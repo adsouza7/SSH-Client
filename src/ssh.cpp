@@ -146,7 +146,7 @@ int main() {
     tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
 
     
-    /*
+    
     SSHClient client;
     std::string u;
     std::string p;
@@ -165,13 +165,11 @@ int main() {
 
         std::cout << "This: " <<p;
 
-        //client.StartTerminal();
+        client.StartTerminal();
     }
     catch (const std::exception& e) {
         std::cerr << "Construction failed: " << e.what() << "\n";
     }
-    */
-    
     
     
     int ret;

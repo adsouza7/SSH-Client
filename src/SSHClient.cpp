@@ -399,9 +399,8 @@ int SSHClient::StartTerminal() {
 
     
     Packet test;
-    test.addByte(SSH_MSG_CHANNEL_DATA);
-    test.addWord(0);
-    test.addString("clear\n");
+    std::string h = "uname\n";
+    test.constructChannelData(h);
     sendPacket(&test);
 
     uint32_t size = 0;

@@ -25,6 +25,7 @@ struct Packet {
     void addRawString(const std::string& str);
     void addString(const char* string);
     void addBool(bool value);
+    void constructChannelData(std::string& data);
 
     template <typename Container>
     void addString(const Container& data) {

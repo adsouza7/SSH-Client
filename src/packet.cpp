@@ -48,6 +48,11 @@ void Packet::addBool(bool value) {
     }
 }
 
+void Packet::constructChannelData(std::string& data) {
+    this->addByte(94);
+    this->addWord(0);
+    this->addString(data);
+}
 
 uint8_t Packet::getMessageCode() {
     return buffer[0];
