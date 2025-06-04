@@ -57,7 +57,7 @@ void enableRawMode() {
     raw.c_iflag &= ~(ICRNL | IXON); // Disable CR-to-NL translation and XON/XOFF
     //raw.c_oflag &= ~(OPOST);        // Disable post-processing of output
     raw.c_cflag |= (CS8);           // 8-bit characters
-    raw.c_lflag &= ~(ICANON | IEXTEN);  // Raw input, (no signals), no special processing
+    raw.c_lflag &= ~(ICANON | IEXTEN | ISIG);  // Raw input, (no signals), no special processing
 
     tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
 
@@ -68,8 +68,9 @@ void* Manager(void*) {
     Message recvMsg;
     std::string *c;
     Packet* sendPacket;
+    bool keepGoing = true;
     
-    while (1) {
+    while (keepGoing) {
 
         sem_wait(&managerSem);
 
@@ -97,6 +98,8 @@ void* Manager(void*) {
             uint32_t size = 0;
             packet = (Packet*)(recvMsg.content);
 
+            //std::cout << "Code: " << std::dec << static_cast<int>(packet->getMessageCode()) << std::endl;
+
             if (packet->getMessageCode() == SSH_MSG_CHANNEL_DATA) {
                 size = ntohl(*((uint32_t*)(packet->buffer.data() + 5)));
                 std::string result(reinterpret_cast<const char*>(packet->buffer.data() + 9), size);
@@ -107,6 +110,9 @@ void* Manager(void*) {
 
                 sem_post(&printSem);
 
+            }
+            else if (packet->getMessageCode() == SSH_MSG_CHANNEL_CLOSE) {
+                keepGoing = false;
             }
             
             delete packet;
