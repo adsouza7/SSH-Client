@@ -18,6 +18,7 @@
 #define SSH_MSG_SERVICE_REQUEST             5
 #define SSH_MSG_SERVICE_ACCEPT              6
 #define SSH_MSG_USERAUTH_REQUEST            50
+#define SSH_MSG_USERAUTH_FAILURE            51
 #define SSH_MSG_USERAUTH_SUCCESS            52
 #define SSH_MSG_CHANNEL_OPEN                90
 #define SSH_MSG_CHANNEL_OPEN_CONFIRMATION   91

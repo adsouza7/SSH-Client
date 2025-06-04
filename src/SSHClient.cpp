@@ -324,10 +324,15 @@ int SSHClient::AuthenticateUser(std::string& username, std::string& password) {
     sendPacket(&authReq);
 
     recvPacket = receivePacket();
-    if (recvPacket->getMessageCode() != SSH_MSG_USERAUTH_SUCCESS){
+    if (recvPacket->getMessageCode() == SSH_MSG_USERAUTH_FAILURE){
         std::cerr << "Incorrect password" << std::endl;
         delete recvPacket;
         return 0;
+    }
+    else if (recvPacket->getMessageCode() == SSH_MSG_DISCONNECT){
+        std::cerr << "Permission Denied" << std::endl;
+        delete recvPacket;
+        return -1;
     }
 
     delete recvPacket;

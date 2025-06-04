@@ -231,6 +231,8 @@ void* TerminalOutput(void*) {
 int main(int argc, char* argv[]) {
    
     std::string u, p, arg, host;
+    int ret;
+    int stdinFlags;
     size_t pos = -1;
 
     // Check num args
@@ -263,12 +265,17 @@ int main(int argc, char* argv[]) {
         client = SSHClient(host);
         client.serverConnect();
 
-        for (int i=0; i < 3; i++) {
+        for (;;) {
             std::cout << "Password: ";
             std::cin >> p;
 
-            if (client.AuthenticateUser(u, p)) {
+            ret = client.AuthenticateUser(u, p);
+
+            if (ret == 1) {
                 break;
+            }
+            else if (ret == -1) {
+                return 1;
             }
 
         }
@@ -279,10 +286,6 @@ int main(int argc, char* argv[]) {
         std::cerr << "Construction failed: " << e.what() << "\n";
         return 1;
     }
-    
-    
-    int ret;
-    int stdinFlags;
 
     enableRawMode();
 
