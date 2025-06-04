@@ -55,7 +55,6 @@ void enableRawMode() {
     tcgetattr(STDIN_FILENO, &raw);
 
     raw.c_iflag &= ~(ICRNL | IXON); // Disable CR-to-NL translation and XON/XOFF
-    //raw.c_oflag &= ~(OPOST);        // Disable post-processing of output
     raw.c_cflag |= (CS8);           // 8-bit characters
     raw.c_lflag &= ~(ICANON | IEXTEN | ISIG);  // Raw input, (no signals), no special processing
 
@@ -229,41 +228,56 @@ void* TerminalOutput(void*) {
     return nullptr;
 };
 
-int main() {
+int main(int argc, char* argv[]) {
    
+    std::string u, p, arg, host;
+    size_t pos = -1;
+
+    // Check num args
+    if (argc < 2) {
+        std::cerr << "Usage: ./ssh-client username@hostname" << std::endl;
+        return 1;
+    }
+
+    // Extract username + hostname
+    arg = std::string(argv[1]);
+    pos = arg.find("@");
+    if (pos == std::string::npos) {
+        std::cerr << "Usage: ./ssh-client username@hostname" << std::endl;
+        return 1;
+    }
+    u = arg.substr(0, pos);
+    host = arg.substr(pos+1);
 
     // Saved original terminal state
     tcgetattr(STDIN_FILENO, &orig_termios);
-    atexit(disableRawMode);
+    atexit(disableRawMode); 
 
     // Disable echo
     struct termios raw = orig_termios;
     raw.c_lflag &= ~ECHO;  
-    tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
-
+    tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw); 
     
     
-    std::string u;
-    std::string p;
-
     try {
-        client = SSHClient("aaron-tc");
+        client = SSHClient(host);
         client.serverConnect();
 
-        std::cout << "Username: ";
-        std::cin >> u;
+        for (int i=0; i < 3; i++) {
+            std::cout << "Password: ";
+            std::cin >> p;
 
-        std::cout << "Password: ";
-        std::cin >> p;
+            if (client.AuthenticateUser(u, p)) {
+                break;
+            }
 
-        client.AuthenticateUser(u, p);
-
-        std::cout << "This: " <<p;
+        }
 
         client.StartTerminal();
     }
     catch (const std::exception& e) {
         std::cerr << "Construction failed: " << e.what() << "\n";
+        return 1;
     }
     
     
