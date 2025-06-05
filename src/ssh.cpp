@@ -11,6 +11,7 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 
+// Client object
 SSHClient client;
 
 // Thread PIDs
@@ -41,14 +42,22 @@ std::queue<std::string> printQ;
 std::queue<Packet*> sendQ;
 std::queue<Message> managerQ;
 
+// Save original terminal state
 struct termios orig_termios;
 
+/* 
+ * Resets terminal to saved original state
+ */
 void disableRawMode() {
     tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios);
 }
 
-void enableRawMode() {
 
+/*
+ * Enables raw terminal mode: Disables line buffering, signals and terminal
+ * processing
+ */
+void enableRawMode() {
 
     struct termios raw;
 
@@ -56,12 +65,16 @@ void enableRawMode() {
 
     raw.c_iflag &= ~(ICRNL | IXON); // Disable CR-to-NL translation and XON/XOFF
     raw.c_cflag |= (CS8);           // 8-bit characters
-    raw.c_lflag &= ~(ICANON | IEXTEN | ISIG);  // Raw input, (no signals), no special processing
+    raw.c_lflag &= ~(ICANON | IEXTEN | ISIG);  // Raw input, no signals, no special processing
 
     tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
 
 }
 
+
+/*
+ * Manager Thread - Processes SSH Packets and Coordinates all other threads
+ */
 void* Manager(void*) {
     
     Message recvMsg;
@@ -71,27 +84,34 @@ void* Manager(void*) {
     
     while (keepGoing) {
 
-        sem_wait(&managerSem);
+        sem_wait(&managerSem);      // Block until a request is received
 
+        // Pop request off queue
         sem_wait(&managerQMutex);
         recvMsg = managerQ.front();
         managerQ.pop();
         sem_post(&managerQMutex);
 
+        // Request is from KeyboardInput thread
         if (recvMsg.fromPid == inputPID) {
             c = static_cast<std::string*>(recvMsg.content);
             
+            // Create channel data packet
             sendPacket = new Packet();
             sendPacket->constructChannelData(*c);
+            delete c;
 
+            // Enqueue packet onto send queue
             sem_wait(&sendQMutex);
             sendQ.push(sendPacket);
             sem_post(&sendQMutex);
 
+            // Wakeup SSHSend thread
             sem_post(&sendSem);
 
         }
         
+        // Request is from SSHRecv thread
         if (recvMsg.fromPid == recvPID) {
             Packet* packet;
             uint32_t size = 0;
@@ -99,32 +119,41 @@ void* Manager(void*) {
 
             //std::cout << "Code: " << std::dec << static_cast<int>(packet->getMessageCode()) << std::endl;
 
+            // Received packet is channel data
             if (packet->getMessageCode() == SSH_MSG_CHANNEL_DATA) {
+                
+                // Extract packet data
                 size = ntohl(*((uint32_t*)(packet->buffer.data() + 5)));
                 std::string result(reinterpret_cast<const char*>(packet->buffer.data() + 9), size);
 
+                // Enqueue packet onto print queue
                 sem_wait(&printQMutex);
                 printQ.push(result);
                 sem_post(&printQMutex);
 
+                // Wakeup TerminalOutput thread
                 sem_post(&printSem);
 
             }
+
+            // Received packet is channel close notification
             else if (packet->getMessageCode() == SSH_MSG_CHANNEL_CLOSE) {
                 keepGoing = false;
             }
             
-            delete packet;
+            delete packet; // free packet
 
         }
-
-        usleep(10);
 
     }
 
     return nullptr;
 };
 
+
+/*
+ * SSHRecv Thread - Receives incoming SSH Packets
+ */
 void* SSHRecv(void*) { 
     
     Packet* recv = nullptr;
@@ -133,20 +162,24 @@ void* SSHRecv(void*) {
 
     while (1) {
         
+        // Check receive buffer
         recv = client.receivePacket();
 
+        // Packet received!
         if (recv) {
             
             msg.content = recv;
 
+            // Enqueue packet onto manager's request queue
             sem_wait(&managerQMutex);
             managerQ.push(msg);
             sem_post(&managerQMutex);
 
+            // Wakeup Manager thread
             sem_post(&managerSem);
         }
         else { 
-            usleep(10);
+            usleep(10); // yield CPU
         }
 
 
@@ -154,28 +187,36 @@ void* SSHRecv(void*) {
     return nullptr;
 };
 
+
+/*
+ * SSHSend Thread - Sends outgoing SSH Packets
+ */
 void* SSHSend(void*) { 
     
     Packet* packet;
 
     while(1) {
-        sem_wait(&sendSem);
+        sem_wait(&sendSem); // Block until a send request is received
 
+        // Pop request off queue
         sem_wait(&sendQMutex);
         packet = sendQ.front();
         sendQ.pop();
         sem_post(&sendQMutex);
 
+        // Send Packet
         client.sendPacket(packet);
 
-        delete packet;
-
-        usleep(10);
+        delete packet;  // free packet
     }
 
     return nullptr;
 };
 
+
+/*
+ * KeyboardInput Thread - Handles user input
+ */
 void* KeyboardInput(void*) { 
     
     char buf;
@@ -186,20 +227,21 @@ void* KeyboardInput(void*) {
 
     while (1) {    
         
+        // Read stdin
         n_bytes = read(STDIN_FILENO, &buf, sizeof(buf));
         if (n_bytes > 0) {
             msg.content = new std::string(1, buf);
 
-            // Add to manager queue
+            // Enqueue's read char onto manager's request queue
             sem_wait(&managerQMutex);
             managerQ.push(msg);
             sem_post(&managerQMutex);
 
-            // wakeup manager
+            // Wakeup Manager thread
             sem_post(&managerSem);
         }
 
-        usleep(10);
+        usleep(10); // yield cpu
 
         
     }
@@ -207,13 +249,18 @@ void* KeyboardInput(void*) {
     return nullptr;
 };
 
+
+/*
+ * TerminalOuptut Thread - Displays output received from remote terminal
+ */
 void* TerminalOutput(void*) { 
     
     std::string output;
 
     while(1) {
-        sem_wait(&printSem);
+        sem_wait(&printSem);    // Block until a print request is received
 
+        // Pop off request queue
         sem_wait(&printQMutex);
         output = printQ.front();
         printQ.pop();
@@ -221,7 +268,6 @@ void* TerminalOutput(void*) {
 
         std::cout << output << std::flush;
 
-        usleep(10);
     }
 
     
@@ -251,7 +297,7 @@ int main(int argc, char* argv[]) {
     u = arg.substr(0, pos);
     host = arg.substr(pos+1);
 
-    // Saved original terminal state
+    // Save original terminal state
     tcgetattr(STDIN_FILENO, &orig_termios);
     atexit(disableRawMode); 
 
@@ -260,33 +306,44 @@ int main(int argc, char* argv[]) {
     raw.c_lflag &= ~ECHO;  
     tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw); 
     
-    
+    // Initialize Client
     try {
         client = SSHClient(host);
-        client.serverConnect();
-
-        for (;;) {
-            std::cout << "Password: ";
-            std::cin >> p;
-
-            ret = client.AuthenticateUser(u, p);
-
-            if (ret == 1) {
-                break;
-            }
-            else if (ret == -1) {
-                return 1;
-            }
-
-        }
-
-        client.StartTerminal();
     }
     catch (const std::exception& e) {
-        std::cerr << "Construction failed: " << e.what() << "\n";
+        std::cerr << "Init failed: " << e.what() << std::endl;
         return 1;
     }
 
+    // Attempt connection to server
+    if (!client.serverConnect()) {
+        return 1;
+    }
+
+    // Client Authentication
+    for (;;) {
+        std::cout << "Password: ";
+        std::cin >> p;
+
+        ret = client.AuthenticateUser(u, p);
+
+        // auth success
+        if (ret == 1) {
+            break;
+        }
+        // permission denied
+        else if (ret == -1) {
+            return 1;
+        }
+
+    }
+
+    // Start Terminal Session
+    if (!client.StartTerminal()) {
+        return 1;
+    }
+
+    // Disable echo + signals + terminal processing
     enableRawMode();
 
     // Set stdin to non blocking
@@ -295,13 +352,12 @@ int main(int argc, char* argv[]) {
         std::cerr << "Failed to get STDIN flags" << std::endl;
         return 1;
     }
-
     if (fcntl(STDIN_FILENO, F_SETFL, stdinFlags | O_NONBLOCK) == -1) {
         std::cerr << "Failed to set STDIN flags" << std::endl;
         return 1;
     }
 
-    // Initialize Semaphores
+    // Initialize Semaphores + Mutexes
     if (sem_init(&sendSem, 0, 0) == -1) {
         std::cerr << "Failed to init sendSem!" << std::endl;
         return 1;
@@ -333,25 +389,21 @@ int main(int argc, char* argv[]) {
         std::cerr << "Failed to create manager thread!" << std::endl;
         return 1;
     }
-
     ret = pthread_create(&recvPID, nullptr, &SSHRecv, nullptr);
     if (ret) {
         std::cerr << "Failed to create packet recv thread!" << std::endl;
         return 1;
     }
-
     ret = pthread_create(&inputPID, nullptr, &KeyboardInput, nullptr);
     if (ret) {
         std::cerr << "Failed to create keyboard input thread!" << std::endl;
         return 1;
     }
-
     ret = pthread_create(&printPID, nullptr, &TerminalOutput, nullptr);
     if (ret) {
         std::cerr << "Failed to create terminal output thread!" << std::endl;
         return 1;
     }
-
     ret = pthread_create(&sendPID, nullptr, &SSHSend, nullptr);
     if (ret) {
         std::cerr << "Failed to create packet send thread!" << std::endl;
@@ -367,26 +419,31 @@ int main(int argc, char* argv[]) {
         std::cerr << "pthread_cancel on printPID failed!" << std::endl;
         return 1;
     }
-
     ret = pthread_cancel(inputPID);
     if (ret) {
         std::cerr << "pthread_cancel on inputPID failed!" << std::endl;
         return 1;
     }
-
     ret = pthread_cancel(recvPID);
     if (ret) {
         std::cerr << "pthread_cancel on recvPID failed!" << std::endl;
         return 1;
     }
-
     ret = pthread_cancel(sendPID);
     if (ret) {
         std::cerr << "pthread_cancel on sendPID failed!" << std::endl;
         return 1;
     }
 
-    // Set std in back to blocking
+    // Destory semaphores
+    sem_destroy(&sendSem);
+    sem_destroy(&printSem);
+    sem_destroy(&managerSem);
+    sem_destroy(&printQMutex);
+    sem_destroy(&sendQMutex);
+    sem_destroy(&managerQMutex);
+
+    // Set stdin back to blocking
     if (fcntl(STDIN_FILENO, F_SETFL, stdinFlags) == -1) {
         std::cerr << "Failed to set STDIN flags" << std::endl;
         return 1;

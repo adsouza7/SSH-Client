@@ -284,7 +284,7 @@ int SSHClient::serverConnect() {
     }
 
 
-    return 0;
+    return 1;
 }
 
 
@@ -408,12 +408,11 @@ int SSHClient::StartTerminal() {
     sockFlags = fcntl(sockFD, F_GETFL, 0);
     if (sockFlags == -1) {
         std::cerr << "Failed to get socket flags" << std::endl;
-        return 1;
+        return 0;
     }
-
     if (fcntl(sockFD, F_SETFL, sockFlags | O_NONBLOCK) == -1) {
         std::cerr << "Failed to set socket flags" << std::endl;
-        return 1;
+        return 0;
     }
 
     return 1;
