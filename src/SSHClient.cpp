@@ -1,5 +1,6 @@
 #include <stdexcept>
 #include <SSHClient.h>
+#include <utils.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <netdb.h>
@@ -13,11 +14,6 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-
-#include <iostream>
-#include <iomanip>
-
-const std::string SERVER_PORT = "22";
 const std::string IDString = "SSH-2.0-AaronClient\r\n";
 
 // Supported Algorithms
@@ -32,66 +28,37 @@ const std::string compression_stoc = "none";
 const std::string langs_ctos = "";
 const std::string langs_stoc = "";
 
-void print_hex(std::vector<uint8_t>& data, size_t size) {
-    for (size_t i = 0; i < size; ++i) {
-        if (i % 16 == 0) std::cout << std::setw(4) << std::setfill('0') << i << ": ";
-        std::cout << std::hex << std::setw(2) << std::setfill('0')
-                  << static_cast<int>(data[i]) << ' ';
-        if (i % 16 == 15 || i == size - 1) std::cout << '\n';
-    }
-}
 
-std::string findFirstCommon(const std::string& client,
-    const std::string& server) {
-
-    std::unordered_set<std::string> serverSet;
-    size_t prev = 0;
-    size_t current = 0;
-
-    while (current != std::string::npos) {
-        current = server.find(',', prev);
-
-        serverSet.insert(server.substr(prev, current - prev));
-
-        prev = current + 1;
-    }
-
-    prev = 0;
-    current = 0;
-
-    while (current != std::string::npos) {
-        current = client.find(',', prev);
-
-        if (serverSet.count(client.substr(prev, current - prev))) {
-            return client.substr(prev, current - prev);
-        }
-
-        prev = current + 1;
-    }
-
-    return "";
-
-    
-}
-
+/*
+ * Constructs an SSHClient and connects to the given hostname.
+ * 
+ * @param hostname - The hostname or IP address of the SSH server.
+ * 
+ * @throws std::runtime_error if socket creation or connection fails.
+ * @throws std::invalid_argument if hostname resolution fails.
+ */
 SSHClient::SSHClient(const std::string& hostname) {
-    std::cout << "Hostname: " << hostname << std::endl;
- 
-    std::srand(std::time(0));
-
+    
     int ret;
     struct addrinfo hints, *serverAddr;
 
+    std::cout << "Hostname: " << hostname << std::endl;
+
+    std::srand(std::time(0)); // Initialize random seed
+
+    // Initialize socket
     if ((sockFD = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         throw std::runtime_error("Socket creation error");
     }
 
+    
+    // Construct hints struct
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_STREAM;
-
+    
     // Get sockaddr of server from hostname
-    ret = getaddrinfo(hostname.c_str(), SERVER_PORT.c_str(), &hints, &serverAddr);
+    ret = getaddrinfo(hostname.c_str(), SERVER_PORT, &hints, &serverAddr);
     if (ret != 0) {
         throw std::invalid_argument(gai_strerror(ret));
     }
@@ -103,15 +70,30 @@ SSHClient::SSHClient(const std::string& hostname) {
     }
 }
 
+
+/*
+ * Receives and processes SSH packets from the connected server
+ *
+ * If a TCP segment contains multiple SSH packets, they are buffered.
+ * Subsequent calls to this method empty the buffer one packet at a time.
+ *
+ * The socket is only checked for incoming packets if the buffer is empty.
+ *
+ * Decryption and HMAC checks are performed when enabled
+ *
+ * @return A pointer to the a valid Packet or nullptr if none are available
+ */
 Packet* SSHClient::receivePacket() {
     
     Packet* recvPacket = nullptr;
 
-    if (packetRecvQ.size() < 1) { // change back to 2 later
+    // Only read socket if packet buffer is empty
+    if (packetRecvQ.empty()) {
 
         std::vector<uint8_t> recvData(MAX_PACKET_SIZE);
         int recvLen;
 
+        // Read socket
         recvLen = recv(sockFD, recvData.data(), MAX_PACKET_SIZE, 0);
         if (recvLen > 0) {
             
@@ -119,37 +101,45 @@ Packet* SSHClient::receivePacket() {
             uint32_t packetLen = 0;
             uint8_t paddingLen = 0;
 
+            // Decrypt and verify packets if encryption is enabled
             if (encryptPackets) {
                 
-                // First block of ciphertext (replace 16 w/ var later)
                 std::vector<uint8_t> temp;
                 std::vector<uint8_t> decBytes;
                 uint8_t *packetBytes, *HMACBytes;
 
+                // Go thru received data until all packets have been processed
                 while (curr < recvLen) {
                     
                     // Decrypt first block of enc packet to get packet length
                     packetBytes = recvData.data() + curr;
-                    
-
-                    Decrypt(&decCTX, packetBytes, 16, encKeyStoC, IVKeyStoC,
-                            decBytes);
+                    if (!Decrypt(&decCTX, packetBytes, 16, encKeyStoC,
+                        IVKeyStoC, decBytes)) {
+                        return nullptr;
+                    }
                     packetLen = ntohl(*((uint32_t*)(decBytes.data())));
                     paddingLen = *(decBytes.data() + 4);
                     
                     // Decrypt entire packet
-                    Decrypt(&decCTX, packetBytes + 16, packetLen + 4 - 16, encKeyStoC,
-                            IVKeyStoC, temp);
+                    if (!Decrypt(&decCTX, packetBytes + 16, packetLen + 4 - 16,
+                        encKeyStoC, IVKeyStoC, temp)) {
+                        return nullptr;
+                    }
                     decBytes.insert(decBytes.end(), temp.begin(), temp.end());
                     
                     // Extract HMAC bytes
                     HMACBytes = packetBytes + packetLen + 4;
                     
+                    // If packet is verified add to packet buffer
                     if (VerifyHMAC(macKeyStoC, recvSeqNum, decBytes.data(),
                         decBytes.size(), HMACBytes, macKeySize, macMD)) {
                         
-                        packetRecvQ.push(new Packet((decBytes.data() + 5), packetLen - paddingLen - 1));
-                        recvSeqNum++;
+                        packetRecvQ.push(new Packet((decBytes.data() + 5),
+                                        packetLen - paddingLen - 1));
+                        recvSeqNum++; // Increment received packet count
+                    }
+                    else {
+                        //disconnect
                     }
 
                     curr += packetLen + 4 + macKeySize;
@@ -157,51 +147,70 @@ Packet* SSHClient::receivePacket() {
                 }
                 
             }
-            else {
- 
+            else { // Encryption is not enabled
+
+                // Go thru received data untill all packets have been processed
                 while (curr < recvLen) {
+                    
+                    // Read packet len and padding len
                     packetLen = ntohl(((uint32_t*)(recvData.data() + curr))[0]);
                     paddingLen = recvData[curr + 4];
 
+                    // Add packet to buffer
                     packetRecvQ.push(new Packet((recvData.data() + curr + 5),
                         packetLen - paddingLen - 1));
 
                     curr += packetLen + 4;
-                    recvSeqNum++;
-
+                    recvSeqNum++; // Increment received packet count
                 }
             }
         }
     }
 
-    if(!packetRecvQ.empty()) {
+    // Pop off packet buffer
+    if (!packetRecvQ.empty()) {
         recvPacket = packetRecvQ.front();
         packetRecvQ.pop();
     }
-
     return recvPacket;
 }
 
+
+/*
+ * Sends SSH packets to the connected server
+ *
+ * Packets are encrypted and appended with HMACs if encryption is enabled
+ *
+ * @param packet - Pointer to the packet to be sent
+ *
+ * @return Number of bytes sent to the server
+ */
 
 int SSHClient::sendPacket(Packet* packet) {
     
     std::vector<uint8_t> packetBytes;
     int bytesSent;
 
+    // Serialize passed packet into SSH binary packet format
     packet->serializePacket(packetBytes);
 
-    
+    // Encrypt and append HMAC if enabled
     if (encryptPackets) {
         std::vector<uint8_t> encryptedPacket, computedMAC;
-
         
-        ComputeHMAC(macKeyCtoS, sendSeqNum, packetBytes.data(), packetBytes.size(),
-                    computedMAC, macMD);
+        if (!ComputeHMAC(macKeyCtoS, sendSeqNum, packetBytes.data(),
+            packetBytes.size(), computedMAC, macMD)) {
+            std::cerr << "HMAC Computation failed" << std::endl;
+            return 0;
+        }
 
-        Encrypt(&encCTX, packetBytes.data(), packetBytes.size(), encKeyCtoS, IVKeyCtoS, encryptedPacket);
+        if (!Encrypt(&encCTX, packetBytes.data(), packetBytes.size(),
+            encKeyCtoS, IVKeyCtoS, encryptedPacket)) {
+            std::cerr << "Packet Encryption failed" << std::endl;
+            return 0;
+        }
 
-        //print_hex(computedMAC, computedMAC.size());
-
+        // Append HMAC to encrypted packet
         encryptedPacket.insert(encryptedPacket.end(), computedMAC.begin(),
                                computedMAC.end());
 
@@ -210,14 +219,14 @@ int SSHClient::sendPacket(Packet* packet) {
 
                 
     }
-    else {
+    else { // Encryption disabled
         bytesSent = send(sockFD, packetBytes.data(), packetBytes.size(), 0);
     }
 
+    // Increment packet send count if successfully sent
     if (bytesSent > 0) {
             sendSeqNum++;
     }
-
 
     return bytesSent;
 }

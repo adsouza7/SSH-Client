@@ -145,6 +145,8 @@ void* Manager(void*) {
 
         }
 
+        //usleep(10); // Yield CPU
+
     }
 
     return nullptr;
@@ -208,6 +210,8 @@ void* SSHSend(void*) {
         client.sendPacket(packet);
 
         delete packet;  // free packet
+
+        //usleep(10);
     }
 
     return nullptr;
@@ -267,6 +271,8 @@ void* TerminalOutput(void*) {
         sem_post(&printQMutex);
 
         std::cout << output << std::flush;
+
+        //usleep(10);
 
     }
 

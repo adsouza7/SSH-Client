@@ -9,6 +9,7 @@
 #include <queue>
 
 #define MAX_PACKET_SIZE 32768
+#define SERVER_PORT "22"
 
 // Message Numbers
 #define SSH_MSG_KEXINIT                     20

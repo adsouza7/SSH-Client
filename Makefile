@@ -19,7 +19,7 @@ $(BUILD_DIR):
 $(BIN): $(BUILD_DIR)SSHClient.o $(BUILD_DIR)ssh.o $(BUILD_DIR)packet.o\
         $(BUILD_DIR)dh-14.o $(BUILD_DIR)X25519.o $(BUILD_DIR)cryptoCommon.o\
         $(BUILD_DIR)ed25519.o $(BUILD_DIR)rsa.o $(BUILD_DIR)aes-ctr.o\
-        $(BUILD_DIR)hmac.o
+        $(BUILD_DIR)hmac.o $(BUILD_DIR)utils.o
 	$(CXX) -o $(BIN) $^ $(LDFLAGS)
 
 $(BUILD_DIR)ssh.o: src/ssh.cpp | $(BUILD_DIR)
@@ -54,3 +54,6 @@ $(BUILD_DIR)hmac.o: src/hmac.cpp | $(BUILD_DIR)
 
 $(BUILD_DIR)cryptoCommon.o: src/cryptoCommon.cpp | $(BUILD_DIR)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) src/cryptoCommon.cpp -o $@
+
+$(BUILD_DIR)utils.o: src/utils.cpp | $(BUILD_DIR)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) src/utils.cpp -o $@
