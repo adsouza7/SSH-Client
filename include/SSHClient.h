@@ -131,13 +131,13 @@ class SSHClient {
 
 
         void wrap_packet(std::vector<uint8_t>& packet);
-        void build_kexinit();
+        Packet* build_kexinit();
         void parse_kexinit();
         void resolve_crypto(std::string& kex, std::string& server_key, 
                             std::string& encryption, std::string& mac,
                             std::string& compression);
 
-        void build_dh_kexinit(Packet* dh_kexinit);
+        Packet* build_dh_kexinit();
         void parse_dh_kex_reply(Packet* packet);
         void generate_exchange_hash();
         void generate_session_keys();

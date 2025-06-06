@@ -235,6 +235,7 @@ int SSHClient::sendPacket(Packet* packet) {
 int SSHClient::serverConnect() {
 
     std::vector<uint8_t> buffer(255);
+    Packet* tempPacket;
     int bytesRecv = 0;
 
     // ID String Exchange
@@ -244,34 +245,32 @@ int SSHClient::serverConnect() {
     if (bytesRecv > 0) {
         serverIDString.assign((char*)(buffer.data()), bytesRecv);       
     }
-    std::cout << serverIDString << std::endl;
 
     /************** KEY EXCHANGE ******************/
     
-    std::vector<uint8_t> packetBytes;
+    //std::vector<uint8_t> packetBytes;
 
     // KEXINIT send
-    build_kexinit();
+    this->client_kexinit = build_kexinit();
     sendPacket(this->client_kexinit);
-    /*
-    this->client_kexinit->serializePacket(packetBytes);
-    send(sockFD, packetBytes.data(), packetBytes.size(), 0);*/
 
     // Server KEXINIT recv
     this->server_kexinit = receivePacket();
     parse_kexinit();
 
     // DH_KEXINIT send
-    Packet tempPacket = Packet(); 
-    build_dh_kexinit(&tempPacket);
-    sendPacket(&tempPacket);
+    tempPacket = build_dh_kexinit();
+    sendPacket(tempPacket);
+    delete tempPacket;
 
-    Packet* recvPacket = receivePacket();
-    parse_dh_kex_reply(recvPacket);
-    delete recvPacket;
+    // Server DHKEXREPLY recv
+    tempPacket = receivePacket();
+    parse_dh_kex_reply(tempPacket);
+    delete tempPacket;
 
-    if (DeriveSharedSecret(client_dh_keypair, server_dh_pubkey, shared_secret_K)
-    < 0) {
+    // Derive Shared Secret Key
+    if (DeriveSharedSecret(client_dh_keypair, server_dh_pubkey,
+        shared_secret_K) < 0) {
         std::cout << "ERROR" << std::endl;
     }
 
@@ -282,15 +281,17 @@ int SSHClient::serverConnect() {
 
     generate_session_keys();
 
-    tempPacket = Packet();
-    tempPacket.addByte(SSH_MSG_NEWKEYS);
-    sendPacket(&tempPacket);
+    tempPacket = new Packet();
+    tempPacket->addByte(SSH_MSG_NEWKEYS);
+    sendPacket(tempPacket);
+    delete tempPacket;
 
-    recvPacket = receivePacket();
-    if (*(recvPacket->buffer.data()) == SSH_MSG_NEWKEYS) {
+    tempPacket = receivePacket();
+    if (*(tempPacket->buffer.data()) == SSH_MSG_NEWKEYS) {
         encryptPackets = true;
         std::cout << "BEGIN ENCRYPTION" << std::endl;
     }
+    delete tempPacket;
 
 
     return 1;
@@ -466,35 +467,37 @@ void SSHClient::parse_kexinit() {
 
 }
 
-void SSHClient::build_kexinit() {    
+Packet* SSHClient::build_kexinit() {    
     
-    client_kexinit = new Packet();
+    Packet* kexinit = new Packet();
 
     // Message code
-    client_kexinit->addByte(SSH_MSG_KEXINIT);
+    kexinit->addByte(SSH_MSG_KEXINIT);
 
     // Cookie
     for (int i = 0; i < 16; i++) {
-        client_kexinit->addByte(std::rand() % 256);
+        kexinit->addByte(std::rand() % 256);
     }
 
     // Algorithms
-    client_kexinit->addString(kex_algos);
-    client_kexinit->addString(server_host_key_algos);
-    client_kexinit->addString(encryption_ctos);
-    client_kexinit->addString(encryption_stoc);
-    client_kexinit->addString(mac_ctos);
-    client_kexinit->addString(mac_stoc);
-    client_kexinit->addString(compression_ctos);
-    client_kexinit->addString(compression_stoc);
-    client_kexinit->addString(langs_ctos);
-    client_kexinit->addString(langs_stoc);
+    kexinit->addString(kex_algos);
+    kexinit->addString(server_host_key_algos);
+    kexinit->addString(encryption_ctos);
+    kexinit->addString(encryption_stoc);
+    kexinit->addString(mac_ctos);
+    kexinit->addString(mac_stoc);
+    kexinit->addString(compression_ctos);
+    kexinit->addString(compression_stoc);
+    kexinit->addString(langs_ctos);
+    kexinit->addString(langs_stoc);
 
     // First KEX Packet Follows
-    client_kexinit->addByte(0);
+    kexinit->addByte(0);
 
     // Reserved Bytes
-    client_kexinit->addWord(0);
+    kexinit->addWord(0);
+
+    return kexinit;
 
 }
 
@@ -569,15 +572,18 @@ void SSHClient::resolve_crypto(std::string& kex, std::string& server_key,
     << " "  << compression << std::endl; 
 }
 
-void SSHClient::build_dh_kexinit(Packet* dh_kexinit) {
+Packet* SSHClient::build_dh_kexinit() {
     
-    client_dh_keypair = DHKeyGen();
-    if (!client_dh_keypair) {
-        throw std::runtime_error("SSHClient::build_dh_kexinit() = Key Gen Failed");
-    }
-
+    Packet* dh_kexinit = new Packet;
     std::vector<uint8_t> keyBytes;
 
+    // Generate DH Key object
+    client_dh_keypair = DHKeyGen();
+    if (!client_dh_keypair) {
+        std::cerr << "Key Gen Failed" << std::endl;;
+    }
+
+    // Convert DH Key objects to bytes
     DHKey2Bytes(client_dh_keypair, keyBytes);
 
     // Add message code
@@ -590,6 +596,8 @@ void SSHClient::build_dh_kexinit(Packet* dh_kexinit) {
     else {
         dh_kexinit->addString(keyBytes); 
     }
+
+    return dh_kexinit;
 
 }
 
