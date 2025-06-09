@@ -419,6 +419,9 @@ int main(int argc, char* argv[]) {
     // Wait for Manager thread to exit - should happen on disconnect msg
     pthread_join(managerPID, nullptr);
 
+    // Disconnect from server
+    client.serverDisconnect();
+
     // Kill all other threads
     ret = pthread_cancel(printPID);
     if (ret) {

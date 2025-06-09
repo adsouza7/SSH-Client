@@ -310,6 +310,24 @@ int SSHClient::serverConnect() {
 
 
 /*
+ * Initiate Disconnect
+ */
+int SSHClient::serverDisconnect() {
+    
+    Packet disc;
+
+    disc.addByte(SSH_MSG_DISCONNECT);
+    disc.addWord(11);
+    disc.addString("User initiated logout");
+    disc.addString("");
+
+    sendPacket(&disc);
+
+    return 0;
+}
+
+
+/*
  * Authenticates user using provided username and password
  *
  * @param username - user's username for connection
