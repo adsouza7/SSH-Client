@@ -232,6 +232,11 @@ int SSHClient::sendPacket(Packet* packet) {
 }
 
 
+/*
+ * Handles SSH connection process
+ *
+ * @return 1 on Success, 0 on Failure
+ */
 int SSHClient::serverConnect() {
 
     std::vector<uint8_t> buffer(255);
@@ -248,8 +253,6 @@ int SSHClient::serverConnect() {
 
     /************** KEY EXCHANGE ******************/
     
-    //std::vector<uint8_t> packetBytes;
-
     // KEXINIT send
     this->client_kexinit = build_kexinit();
     sendPacket(this->client_kexinit);
@@ -269,35 +272,51 @@ int SSHClient::serverConnect() {
     delete tempPacket;
 
     // Derive Shared Secret Key
-    if (DeriveSharedSecret(client_dh_keypair, server_dh_pubkey,
-        shared_secret_K) < 0) {
-        std::cout << "ERROR" << std::endl;
+    if (!DeriveSharedSecret(client_dh_keypair, server_dh_pubkey, shared_secret_K)) {
+        std::cerr << "Shared Key Derivation Failed" << std::endl;
+        return 0;
     }
 
-    generate_exchange_hash();
+    // Generate Exchange Hash
+    if(!generateExchangeHash()) {
+        std::cerr << "Exchange Hash Generation Failed" << std::endl;
+        return 0;
+    };
 
-    std::cout << VerifySignature(server_host_key, exchange_hash_H,
-    server_signature) << std::endl;
+    // Verify computed hash with server's host key and signature
+    if (!VerifySignature(server_host_key, exchange_hash_H, server_signature)) {
+        std::cerr << "Exchange Hash Verification Failed" << std::endl;
+        return 0;
+    }
 
-    generate_session_keys();
+    // Generate Session Keys
+    generateSessionKeys();
 
+    // Send New Keys
     tempPacket = new Packet();
     tempPacket->addByte(SSH_MSG_NEWKEYS);
     sendPacket(tempPacket);
     delete tempPacket;
 
+    // Receive New Keys and enable encryption
     tempPacket = receivePacket();
     if (*(tempPacket->buffer.data()) == SSH_MSG_NEWKEYS) {
         encryptPackets = true;
-        std::cout << "BEGIN ENCRYPTION" << std::endl;
     }
     delete tempPacket;
-
 
     return 1;
 }
 
 
+/*
+ * Authenticates user using provided username and password
+ *
+ * @param username - user's username for connection
+ * @param password - password associated to username
+ *
+ * @return 1 on Success, 0 on Failure, -1 on Permission Denied
+ */
 int SSHClient::AuthenticateUser(std::string& username, std::string& password) {
     
     Packet* recvPacket;
@@ -356,6 +375,11 @@ int SSHClient::AuthenticateUser(std::string& username, std::string& password) {
 }
 
 
+/*
+ * Starts a terminal on the server side
+ *
+ * @return 1 on Success, 0 on Failure
+ */
 int SSHClient::StartTerminal() {
    
     // Construct channel open request packet
@@ -393,6 +417,8 @@ int SSHClient::StartTerminal() {
     terminalReq.addString("\x00"); // No terminal modes
 
     sendPacket(&terminalReq);
+
+    // Wait until success message
     int msgCode = 0;
     do {
         recvPacket = receivePacket();
@@ -400,6 +426,7 @@ int SSHClient::StartTerminal() {
         delete recvPacket;
     } while(msgCode != SSH_MSG_CHANNEL_SUCCESS);
 
+    // Request Shell
     Packet shellReq;
     shellReq.addByte(SSH_MSG_CHANNEL_REQUEST);
     shellReq.addWord(0);
@@ -407,6 +434,8 @@ int SSHClient::StartTerminal() {
     shellReq.addBool(true);
 
     sendPacket(&shellReq);
+
+    // Wait until success message
     msgCode = 0;
     do {
         recvPacket = receivePacket();
@@ -438,7 +467,7 @@ void SSHClient::parse_kexinit() {
     uint8_t* packet = server_kexinit->buffer.data();
 
     if (msg != SSH_MSG_KEXINIT) {
-        throw std::runtime_error("SSHClient::parse_kexinit() = Invalid msg type");
+        throw std::runtime_error("SSHClient::parse_kexinit()=Invalid msg type");
     }
 
     int curr = 17;
@@ -462,7 +491,7 @@ void SSHClient::parse_kexinit() {
     curr += 4 + (parseAndMatch(mac, mac_ctos) * 2); // skip s_to_c
     parseAndMatch(compression, compression_ctos);
 
-    // TODO: Set appropriate function pointers
+    // Set appropriate function pointers for crypto
     resolve_crypto(kex, server_key, encryption, mac, compression);
 
 }
@@ -520,7 +549,7 @@ void SSHClient::resolve_crypto(std::string& kex, std::string& server_key,
         throw std::runtime_error("SSHClient::resolve_crypto() = Invalid KEX algorithm");
     }
 
-    // TODO: Resolve server host key algorithms
+    // Resolve server host key algorithms
     if (server_key == "ssh-ed25519") {
         ExtractServerKey = ed25519Bytes2PubKey;
         VerifySignature = ed25519VerifySign;
@@ -533,8 +562,7 @@ void SSHClient::resolve_crypto(std::string& kex, std::string& server_key,
         throw std::runtime_error("SSHClient::resolve_crypto() = Invalid Server Host algorithm");
     }
 
-    // TODO: Resolve encryption algorithms
-
+    // Resolve encryption algorithms
     if (encryption == "aes128-ctr") {
         IVKeySize = 16;
         encKeySize = 16;
@@ -554,7 +582,7 @@ void SSHClient::resolve_crypto(std::string& kex, std::string& server_key,
     }
 
     
-    // TODO: Resolve MAC algorithms
+    // Resolve MAC algorithms
     if (mac == "hmac-sha2-256") {
         macKeySize = 32;
         macMD = "SHA256";
@@ -567,9 +595,6 @@ void SSHClient::resolve_crypto(std::string& kex, std::string& server_key,
         throw std::runtime_error("SSHClient::resolve_crypto() = Invalid MAC algorithm");
     }
 
-
-    std::cout << kex << " " << server_key << " " << encryption << " " << mac
-    << " "  << compression << std::endl; 
 }
 
 Packet* SSHClient::build_dh_kexinit() {
@@ -642,75 +667,80 @@ void SSHClient::parse_dh_kex_reply(Packet* packet) {
 }
 
 
-void SSHClient::generate_exchange_hash() {
+int SSHClient::generateExchangeHash() {
     
-    Packet temp, temp2;
+    Packet temp; // Use packet to help with encoding and preparing hash input
     std::vector<uint8_t> tempBytes;
 
+    // Add inputs
     temp.addString(IDString.substr(0, IDString.length() - 2));
-
-    //print_hex(temp.buffer, temp.buffer.size());
-
     temp.addString(serverIDString.substr(0, serverIDString.length() - 2));
     temp.addString(client_kexinit->buffer);
     temp.addString(server_kexinit->buffer);
-
     temp.addString(serverKeyBytes);
-
+    
     DHKey2Bytes(client_dh_keypair, tempBytes);
     temp.addString(tempBytes);
-
+    
     DHKey2Bytes(server_dh_pubkey, tempBytes);
     temp.addString(tempBytes);
-
     temp.addMPInt(shared_secret_K);
 
-    //print_hex(temp.buffer, temp.buffer.size());
+    // Hash computation
+    if (!ComputeHash(temp.buffer, exchange_hash_H)) {
+        std::cerr << "Hash computation failed" << std::endl;    
+        return 0;
+    };
 
-    ComputeHash(temp.buffer, exchange_hash_H);
+    return 1;
 
 }
 
 
-void SSHClient::generate_session_keys() {
+int SSHClient::generateSessionKeys() {
 
     
-    // Workaround to easily encode secret key as mpint
-    Packet K_bytes;
+    Packet K_bytes;  // Workaround to easily encode secret key as mpint
     int ret;
     K_bytes.addMPInt(shared_secret_K);
 
     ret = GenerateSessionKey(K_bytes.buffer, exchange_hash_H, 'A', IVKeyCtoS, IVKeySize);
-    if (ret) {
-        throw std::runtime_error("Error: Failed to generate IV Key C to S");
+    if (!ret) {
+        std::cerr << "Failed to generate IV Key C to S" << std::endl;
+        return 0;
     }
 
     ret = GenerateSessionKey(K_bytes.buffer, exchange_hash_H, 'B', IVKeyStoC, IVKeySize);
-    if (ret) {
-        throw std::runtime_error("Error: Failed to generate IV Key S to C");
+    if (!ret) {
+        std::cerr << "Failed to generate IV Key S to C" << std::endl;
+        return 0;
     }
 
     ret = GenerateSessionKey(K_bytes.buffer, exchange_hash_H, 'C', encKeyCtoS, encKeySize); 
-    if (ret) {
-        throw std::runtime_error("Error: Failed to generate Enc Key C to S");
+    if (!ret) {
+        std::cerr << "Failed to generate Enc Key C to S" << std::endl;
+        return 0;
     }
 
     ret = GenerateSessionKey(K_bytes.buffer, exchange_hash_H, 'D', encKeyStoC, encKeySize); 
-    if (ret) {
-        throw std::runtime_error("Error: Failed to generate Enc Key S to C");
+    if (!ret) {
+        std::cerr << "Failed to generate Enc Key S to C" << std::endl;
+        return 0;
     }
 
     ret = GenerateSessionKey(K_bytes.buffer, exchange_hash_H, 'E', macKeyCtoS, macKeySize);
-    if (ret) {
-        throw std::runtime_error("Error: Failed to generate MAC Key C to S");
+    if (!ret) {
+        std::cerr << "Failed to generate MAC Key C to S" << std::endl;
+        return 0;
     }
-
-    print_hex(macKeyCtoS, macKeyCtoS.size());
 
     ret = GenerateSessionKey(K_bytes.buffer, exchange_hash_H, 'F', macKeyStoC, macKeySize);
-    if (ret) {
-        throw std::runtime_error("Error: Failed to generate MAC Key S to C");
+    if (!ret) {
+        std::cerr << "Failed to generate MAC Key S to C" << std::endl;
+        return 0;
     }
+
+    return 1;
 
 }
 

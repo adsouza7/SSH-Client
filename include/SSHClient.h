@@ -139,8 +139,8 @@ class SSHClient {
 
         Packet* build_dh_kexinit();
         void parse_dh_kex_reply(Packet* packet);
-        void generate_exchange_hash();
-        void generate_session_keys();
+        int generateExchangeHash();
+        int generateSessionKeys();
         
 };
 

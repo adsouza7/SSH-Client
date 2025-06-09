@@ -65,18 +65,18 @@ EVP_PKEY* ed25519Bytes2PubKey(std::vector<uint8_t>& keyBytes) {
 int ed25519VerifySign(EVP_PKEY* key, std::vector<uint8_t>& hash,
     std::vector<uint8_t>& signature) {
 
-    int ret = -1;
+    int ret = 0;
 
     EVP_MD_CTX* mdctx = EVP_MD_CTX_new();
     if (!mdctx) {
         ERR_print_errors_fp(stderr);
-        return -1;
+        return 0;
     }
 
     if (EVP_DigestVerifyInit(mdctx, nullptr, nullptr, nullptr, key) != 1) {
         EVP_MD_CTX_free(mdctx);
         ERR_print_errors_fp(stderr);
-        return -1;
+        return 0;
     }
 
     ret = EVP_DigestVerify(mdctx, signature.data(), signature.size(),
