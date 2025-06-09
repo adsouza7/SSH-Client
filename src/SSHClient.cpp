@@ -12,6 +12,7 @@
 #include <cstdlib>
 #include <ctime>
 #include <fcntl.h>
+#include <sys/ioctl.h>
 #include <unistd.h>
 
 const std::string IDString = "SSH-2.0-AaronClient\r\n";
@@ -139,7 +140,7 @@ Packet* SSHClient::receivePacket() {
                         recvSeqNum++; // Increment received packet count
                     }
                     else {
-                        //disconnect
+                        serverDisconnect();
                     }
 
                     curr += packetLen + 4 + macKeySize;
@@ -403,6 +404,7 @@ int SSHClient::StartTerminal() {
     // Construct channel open request packet
     Packet* recvPacket;
     Packet channelReq;
+    struct winsize w;
 
     channelReq.addByte(SSH_MSG_CHANNEL_OPEN);
     channelReq.addString("session");
@@ -421,6 +423,12 @@ int SSHClient::StartTerminal() {
     }
     delete recvPacket;
 
+    // Get win size
+    if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) == -1) {
+        std::cerr << "Failed to get window size" << std::endl;
+        return 0;
+    }
+
     // Request Pseudo Terminal
     Packet terminalReq;
     terminalReq.addByte(SSH_MSG_CHANNEL_REQUEST);
@@ -428,10 +436,10 @@ int SSHClient::StartTerminal() {
     terminalReq.addString("pty-req");
     terminalReq.addBool(true);
     terminalReq.addString("xterm-256color"); // term env var
-    terminalReq.addWord(80); // chars/line
-    terminalReq.addWord(24); // rows
-    terminalReq.addWord(640); // width
-    terminalReq.addWord(480); // height
+    terminalReq.addWord(w.ws_col); // chars/line
+    terminalReq.addWord(w.ws_row); // rows
+    terminalReq.addWord(0); // width
+    terminalReq.addWord(0); // height
     terminalReq.addString("\x00"); // No terminal modes
 
     sendPacket(&terminalReq);
