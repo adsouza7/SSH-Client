@@ -485,6 +485,12 @@ int SSHClient::StartTerminal() {
 }
 
 
+/*
+ *
+ * PRIVATE METHODS
+ *
+ */
+
 void SSHClient::parse_kexinit() {
 
     int msg = server_kexinit->getMessageCode();
@@ -521,6 +527,7 @@ void SSHClient::parse_kexinit() {
     resolve_crypto(kex, server_key, encryption, mac, compression);
 
 }
+
 
 Packet* SSHClient::build_kexinit() {    
     
@@ -623,6 +630,7 @@ void SSHClient::resolve_crypto(std::string& kex, std::string& server_key,
 
 }
 
+
 Packet* SSHClient::build_dh_kexinit() {
     
     Packet* dh_kexinit = new Packet;
@@ -688,7 +696,6 @@ void SSHClient::parse_dh_kex_reply(Packet* packet) {
     len = ntohl(*((uint32_t*)(contents + curr)));
     curr += 4;
     server_signature.assign(contents+curr, contents+curr+len);
-    //print_hex(server_signature, server_signature.size());
 
 }
 
@@ -772,6 +779,38 @@ int SSHClient::generateSessionKeys() {
 
 SSHClient::~SSHClient(){
 
-    //close(sockFD);
+    // Close socket
+    if (sockFD > 0) {
+        close(sockFD);
+    }
+
+    // Delete KEXINIT Payloads
+    delete client_kexinit;
+    delete server_kexinit;
+
+    // Clear Packet Queue
+    while (!packetRecvQ.empty()) {
+        delete packetRecvQ.front();
+        packetRecvQ.pop();
+    }
+
+    // Free EVP_PKEYs
+    if (server_host_key) {
+        EVP_PKEY_free(server_host_key);
+    }
+    if (client_dh_keypair) {
+        EVP_PKEY_free(client_dh_keypair);
+    }
+    if (server_dh_pubkey) {
+        EVP_PKEY_free(server_dh_pubkey);
+    }
+
+    // Free cipher contexts
+    if (encCTX) {
+        EVP_CIPHER_CTX_free(encCTX);
+    }
+    if (decCTX) {
+        EVP_CIPHER_CTX_free(decCTX);
+    }
 
 }
