@@ -69,6 +69,8 @@ SSHClient::SSHClient(const std::string& hostname) {
         freeaddrinfo(serverAddr);
         throw std::runtime_error("Could not connect to server");
     }
+
+    freeaddrinfo(serverAddr);
 }
 
 
@@ -812,5 +814,8 @@ SSHClient::~SSHClient(){
     if (decCTX) {
         EVP_CIPHER_CTX_free(decCTX);
     }
+
+    EVP_cleanup();
+    ERR_free_strings();
 
 }

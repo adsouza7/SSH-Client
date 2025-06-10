@@ -29,6 +29,8 @@ int DeriveSharedSecret(EVP_PKEY* keyPair, EVP_PKEY* peerKey,
         goto error;
     }
 
+    
+    EVP_PKEY_CTX_free(ctx);
     return 1;
 
     error:
@@ -144,6 +146,8 @@ int GenerateSessionKey(std::vector<uint8_t>& K, std::vector<uint8_t>& H,
     if (keyOutput.size() > keySize) {
         keyOutput.resize(keySize);
     }
+    
+    EVP_MD_CTX_free(mdctx);
 
     return 1;
 }

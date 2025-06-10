@@ -59,6 +59,7 @@ int ComputeHMAC(const std::vector<uint8_t>& key, uint32_t seqNum,
     cleanup:
         EVP_MAC_CTX_free(ctx);
         EVP_MAC_free(mac);
+        ERR_clear_error();
         return ret;
 
 }

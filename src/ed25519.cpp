@@ -53,9 +53,6 @@ EVP_PKEY* ed25519Bytes2PubKey(std::vector<uint8_t>& keyBytes) {
         abort();
     }
 
-    BIO *out = BIO_new_fp(stdout, BIO_NOCLOSE);
-    EVP_PKEY_print_public(out, key, 0, nullptr);
-
 
     return key;
 
