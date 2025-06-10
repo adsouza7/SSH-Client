@@ -1,6 +1,7 @@
 #include <packet.h>
 #include <cstring>
-
+#include <netdb.h>
+#include <arpa/inet.h>
 
 uint8_t Packet::cipherBlockSize = 8;
 
@@ -52,6 +53,15 @@ void Packet::constructChannelData(std::string& data) {
     this->addByte(94);
     this->addWord(0);
     this->addString(data);
+}
+
+std::string Packet::getChannelData() {
+    
+    uint32_t size = ntohl(*((uint32_t*)(buffer.data() + 5)));
+    std::string result(reinterpret_cast<const char*>(buffer.data() + 9), size);
+
+    return result;
+   
 }
 
 uint8_t Packet::getMessageCode() {

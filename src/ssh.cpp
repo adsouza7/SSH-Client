@@ -8,9 +8,6 @@
 #include <unistd.h>
 #include <termios.h>
 
-#include <netdb.h>
-#include <arpa/inet.h>
-
 // Client object
 SSHClient* client = nullptr;
 
@@ -123,8 +120,7 @@ void* Manager(void*) {
             if (packet->getMessageCode() == SSH_MSG_CHANNEL_DATA) {
                 
                 // Extract packet data
-                size = ntohl(*((uint32_t*)(packet->buffer.data() + 5)));
-                std::string result(reinterpret_cast<const char*>(packet->buffer.data() + 9), size);
+                std::string result = packet->getChannelData();
 
                 // Enqueue packet onto print queue
                 sem_wait(&printQMutex);
