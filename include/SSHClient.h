@@ -69,7 +69,7 @@ class SSHClient {
         std::queue<Packet*> packetRecvQ;
 
         // ID Strings
-        std::string clientIDString;
+        const std::string IDString = "SSH-2.0-AaronClient\r\n";
         std::string serverIDString;
 
         // KEXINIT Payloads

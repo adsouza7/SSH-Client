@@ -1,21 +1,18 @@
-#include <stdexcept>
 #include <SSHClient.h>
 #include <utils.h>
 #include <sys/socket.h>
 #include <sys/types.h>
-#include <netdb.h>
+#include <sys/ioctl.h>
 #include <arpa/inet.h>
+#include <netdb.h>
 #include <unistd.h>
-#include <cstring>
+#include <fcntl.h>
 #include <vector>
 #include <unordered_set>
+#include <stdexcept>
 #include <cstdlib>
 #include <ctime>
-#include <fcntl.h>
-#include <sys/ioctl.h>
-#include <unistd.h>
-
-const std::string IDString = "SSH-2.0-AaronClient\r\n";
+#include <cstring>
 
 // Supported Algorithms
 const std::string kex_algos = "curve25519-sha256,diffie-hellman-group14-sha256";
@@ -110,13 +107,14 @@ Packet* SSHClient::receivePacket() {
                 std::vector<uint8_t> temp;
                 std::vector<uint8_t> decBytes;
                 uint8_t *packetBytes, *HMACBytes;
+                int blockSize = Packet::cipherBlockSize;
 
                 // Go thru received data until all packets have been processed
                 while (curr < recvLen) {
                     
                     // Decrypt first block of enc packet to get packet length
                     packetBytes = recvData.data() + curr;
-                    if (!Decrypt(&decCTX, packetBytes, 16, encKeyStoC,
+                    if (!Decrypt(&decCTX, packetBytes, blockSize, encKeyStoC,
                         IVKeyStoC, decBytes)) {
                         return nullptr;
                     }
@@ -124,8 +122,8 @@ Packet* SSHClient::receivePacket() {
                     paddingLen = *(decBytes.data() + 4);
                     
                     // Decrypt entire packet
-                    if (!Decrypt(&decCTX, packetBytes + 16, packetLen + 4 - 16,
-                        encKeyStoC, IVKeyStoC, temp)) {
+                    if (!Decrypt(&decCTX, packetBytes + blockSize,
+                        packetLen + 4 - blockSize, encKeyStoC, IVKeyStoC, temp)) {
                         return nullptr;
                     }
                     decBytes.insert(decBytes.end(), temp.begin(), temp.end());
