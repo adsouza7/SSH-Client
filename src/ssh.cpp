@@ -12,7 +12,7 @@
 #include <arpa/inet.h>
 
 // Client object
-SSHClient client;
+SSHClient* client = nullptr;
 
 // Thread PIDs
 pthread_t managerPID;
@@ -145,7 +145,6 @@ void* Manager(void*) {
 
         }
 
-        //usleep(10); // Yield CPU
 
     }
 
@@ -163,9 +162,12 @@ void* SSHRecv(void*) {
     msg.fromPid = pthread_self();
 
     while (1) {
-        
+         
+        // Check if thread is to be killed
+        pthread_testcancel();
+
         // Check receive buffer
-        recv = client.receivePacket();
+        recv = client->receivePacket();
 
         // Packet received!
         if (recv) {
@@ -180,11 +182,10 @@ void* SSHRecv(void*) {
             // Wakeup Manager thread
             sem_post(&managerSem);
         }
-        else { 
-            usleep(10); // yield CPU
+        else {
+            usleep(10);
         }
-
-
+        
     }
     return nullptr;
 };
@@ -207,11 +208,10 @@ void* SSHSend(void*) {
         sem_post(&sendQMutex);
 
         // Send Packet
-        client.sendPacket(packet);
+        client->sendPacket(packet);
 
         delete packet;  // free packet
 
-        //usleep(10);
     }
 
     return nullptr;
@@ -272,10 +272,7 @@ void* TerminalOutput(void*) {
 
         std::cout << output << std::flush;
 
-        //usleep(10);
-
     }
-
     
     return nullptr;
 };
@@ -314,7 +311,7 @@ int main(int argc, char* argv[]) {
     
     // Initialize Client
     try {
-        client = SSHClient(host);
+        client = new SSHClient(host);
     }
     catch (const std::exception& e) {
         std::cerr << "Init failed: " << e.what() << std::endl;
@@ -322,7 +319,7 @@ int main(int argc, char* argv[]) {
     }
 
     // Attempt connection to server
-    if (!client.serverConnect()) {
+    if (!client->serverConnect()) {
         return 1;
     }
 
@@ -331,7 +328,7 @@ int main(int argc, char* argv[]) {
         std::cout << "Password: ";
         std::cin >> p;
 
-        ret = client.AuthenticateUser(u, p);
+        ret = client->AuthenticateUser(u, p);
 
         // auth success
         if (ret == 1) {
@@ -345,7 +342,7 @@ int main(int argc, char* argv[]) {
     }
 
     // Start Terminal Session
-    if (!client.StartTerminal()) {
+    if (!client->StartTerminal()) {
         return 1;
     }
 
@@ -420,7 +417,7 @@ int main(int argc, char* argv[]) {
     pthread_join(managerPID, nullptr);
 
     // Disconnect from server
-    client.serverDisconnect();
+    client->serverDisconnect();
 
     // Kill all other threads
     ret = pthread_cancel(printPID);
@@ -457,6 +454,8 @@ int main(int argc, char* argv[]) {
         std::cerr << "Failed to set STDIN flags" << std::endl;
         return 1;
     }
+
+    delete client;
     
     return 0;
 }
