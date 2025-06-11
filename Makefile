@@ -10,6 +10,9 @@ BIN = ssh-client
 
 all: $(BIN)
 
+verbose:
+	$(MAKE) CPPFLAGS="$(CPPFLAGS) -DVERBOSE"
+
 clean:
 	rm -rf $(BIN) $(BUILD_DIR)
 
