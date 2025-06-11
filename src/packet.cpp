@@ -2,6 +2,8 @@
 #include <cstring>
 #include <netdb.h>
 #include <arpa/inet.h>
+#include <sys/random.h>
+#include <iostream>
 
 uint8_t Packet::cipherBlockSize = 8;
 
@@ -71,6 +73,8 @@ uint8_t Packet::getMessageCode() {
 
 void Packet::serializePacket(std::vector<uint8_t>& byteArr) {
 
+    uint8_t rand;
+
     // Add payload
     byteArr.assign(buffer.begin(), buffer.begin() + buffer.size());
 
@@ -82,7 +86,13 @@ void Packet::serializePacket(std::vector<uint8_t>& byteArr) {
 
     // Add padding
     for (int i=0; i < paddingLen; i++) {
-        byteArr.push_back(std::rand() % 256);
+        
+        // generate random num
+        if (getrandom(&rand, sizeof(rand), 0) != sizeof(rand)) {
+            std::cerr << "Failed to generate random number" << std::endl;
+        }
+
+        byteArr.push_back(rand);
     }
 
     // insert padding length at front

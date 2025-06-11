@@ -3,6 +3,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/ioctl.h>
+#include <sys/random.h>
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <unistd.h>
@@ -41,8 +42,6 @@ SSHClient::SSHClient(const std::string& hostname) {
     struct addrinfo hints, *serverAddr;
 
     std::cout << "Hostname: " << hostname << std::endl;
-
-    std::srand(std::time(0)); // Initialize random seed
 
     // Initialize socket
     if ((sockFD = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
@@ -532,13 +531,20 @@ void SSHClient::parse_kexinit() {
 Packet* SSHClient::build_kexinit() {    
     
     Packet* kexinit = new Packet();
+    uint8_t rand;
 
     // Message code
     kexinit->addByte(SSH_MSG_KEXINIT);
 
     // Cookie
     for (int i = 0; i < 16; i++) {
-        kexinit->addByte(std::rand() % 256);
+        
+        // generate random num
+        if (getrandom(&rand, sizeof(rand), 0) != sizeof(rand)) {
+            std::cerr << "Failed to generate random number" << std::endl;
+        }
+
+        kexinit->addByte(rand);
     }
 
     // Algorithms
