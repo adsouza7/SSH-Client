@@ -29,7 +29,14 @@ A fully custom SSH client developed from scratch in C++20, implementing all aspe
 - ```none```
 
 ## Demo
+### Connection
+<p>
+  <img src="docs/conn1.png" alt="Connection 1" width="500"/>
+  <img src="docs/conn2.png" alt="Connection 2" width="500"/>
+</p>
 
+### Wireshark Capture
+![Wireshark](docs/wireshark.png)
 
 ## Build and Run
 ### Dependencies
