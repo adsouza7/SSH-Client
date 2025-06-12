@@ -66,7 +66,7 @@ SSHClient::SSHClient(const std::string& hostname) {
         throw std::runtime_error("Could not connect to server");
     }
 
-    LOG("Established TCP connection with " << hostname << "on port " <<
+    LOG("Established TCP connection with " << hostname << " on port " <<
         SERVER_PORT << std::endl;);
 
     freeaddrinfo(serverAddr);
