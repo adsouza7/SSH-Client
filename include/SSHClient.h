@@ -8,7 +8,16 @@
 #include <packet.h>
 #include <queue>
 
+#ifdef VERBOSE
+    #define RED   "\033[31m"
+    #define RESET "\033[0m"
+    #define LOG(msg) std::cerr << RED <<"[LOG] " << RESET << msg
+#else
+    #define LOG(msg) while(0)
+#endif
+
 #define MAX_PACKET_SIZE 32768
+#define WINDOW_SIZE 2097152
 #define SERVER_PORT "22"
 
 // Message Numbers

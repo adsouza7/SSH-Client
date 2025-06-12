@@ -111,7 +111,6 @@ void* Manager(void*) {
         // Request is from SSHRecv thread
         if (recvMsg.fromPid == recvPID) {
             Packet* packet;
-            uint32_t size = 0;
             packet = (Packet*)(recvMsg.content);
 
             //std::cout << "Code: " << std::dec << static_cast<int>(packet->getMessageCode()) << std::endl;
@@ -321,8 +320,9 @@ int main(int argc, char* argv[]) {
 
     // Client Authentication
     for (;;) {
-        std::cout << "Password: ";
+        std::cout << "Password: " << std::flush;
         std::cin >> p;
+        std::cout << std::endl;
 
         ret = client->AuthenticateUser(u, p);
 
@@ -414,6 +414,7 @@ int main(int argc, char* argv[]) {
 
     // Disconnect from server
     client->serverDisconnect();
+    std::cout << "Closed Connection with " << host << std::endl;
 
     // Kill all other threads
     ret = pthread_cancel(printPID);

@@ -6,7 +6,7 @@ LDFLAGS = -lcrypto -lpthread
 BUILD_DIR = build/
 BIN = ssh-client
 
-.PHONY = all clean
+.PHONY = all verbose clean
 
 all: $(BIN)
 

@@ -66,6 +66,9 @@ SSHClient::SSHClient(const std::string& hostname) {
         throw std::runtime_error("Could not connect to server");
     }
 
+    LOG("Established TCP connection with " << hostname << "on port " <<
+        SERVER_PORT << std::endl;);
+
     freeaddrinfo(serverAddr);
 }
 
@@ -244,67 +247,83 @@ int SSHClient::serverConnect() {
     int bytesRecv = 0;
 
     // ID String Exchange
+    LOG("Sending client ID string: " << IDString);
     send(sockFD, IDString.c_str(), IDString.size(), 0);
 
     bytesRecv = recv(sockFD, buffer.data(), buffer.size(), 0);
     if (bytesRecv > 0) {
-        serverIDString.assign((char*)(buffer.data()), bytesRecv);       
+        serverIDString.assign((char*)(buffer.data()), bytesRecv);
+        LOG("Received server ID string: " << serverIDString);
     }
 
     /************** KEY EXCHANGE ******************/
     
     // KEXINIT send
+    LOG("Building and sending SSH_MSG_KEXINIT\n");
     this->client_kexinit = build_kexinit();
     sendPacket(this->client_kexinit);
 
     // Server KEXINIT recv
+    LOG("Waiting to receive SSH_MSG_KEXINIT from server\n");
     this->server_kexinit = receivePacket();
+    LOG("Received SSH_MSG_KEXINIT, parsing\n");
     parse_kexinit();
 
     // DH_KEXINIT send
+    LOG("Building and sending SSH_MSG_KEXDH_INIT\n");
     tempPacket = build_dh_kexinit();
     sendPacket(tempPacket);
     delete tempPacket;
 
     // Server DHKEXREPLY recv
+    LOG("Waiting to receive SSH_MSG_KEXDH_REPLY\n");
     tempPacket = receivePacket();
+    LOG("Received SSH_MSG_KEXDH_REPLY, parsing\n");
     parse_dh_kex_reply(tempPacket);
     delete tempPacket;
 
     // Derive Shared Secret Key
+    LOG("Deriving shared secret key\n");
     if (!DeriveSharedSecret(client_dh_keypair, server_dh_pubkey, shared_secret_K)) {
         std::cerr << "Shared Key Derivation Failed" << std::endl;
         return 0;
     }
 
     // Generate Exchange Hash
+    LOG("Generating exchange hash\n");
     if(!generateExchangeHash()) {
         std::cerr << "Exchange Hash Generation Failed" << std::endl;
         return 0;
     };
 
     // Verify computed hash with server's host key and signature
+    LOG("Verifying server signature with host key\n");
     if (!VerifySignature(server_host_key, exchange_hash_H, server_signature)) {
         std::cerr << "Exchange Hash Verification Failed" << std::endl;
         return 0;
     }
 
     // Generate Session Keys
+    LOG("Generating session keys from shared secret\n");
     generateSessionKeys();
 
     // Send New Keys
+    LOG("Sending SSH_MSG_NEWKEYS\n");
     tempPacket = new Packet();
     tempPacket->addByte(SSH_MSG_NEWKEYS);
     sendPacket(tempPacket);
     delete tempPacket;
 
     // Receive New Keys and enable encryption
+    LOG("Waiting for SSH_MSG_NEWKEYS from server\n");
     tempPacket = receivePacket();
     if (*(tempPacket->buffer.data()) == SSH_MSG_NEWKEYS) {
+        LOG("Received SSH_MSG_NEWKEYS, enabling encryption\n");
         encryptPackets = true;
     }
     delete tempPacket;
 
+    LOG("Key exchange complete! SSH session is secure\n");
     return 1;
 }
 
@@ -321,6 +340,7 @@ int SSHClient::serverDisconnect() {
     disc.addString("User initiated logout");
     disc.addString("");
 
+    LOG("Sending SSH_MSG_DISCONNECT to server\n");
     sendPacket(&disc);
 
     return 0;
@@ -340,7 +360,10 @@ int SSHClient::AuthenticateUser(std::string& username, std::string& password) {
     Packet* recvPacket;
 
     if (!authPhase) {
-        
+       
+        LOG("Starting authentication phase\n");
+        LOG("Sending SSH_MSG_SERVICE_REQUEST\n");
+
         // Construct Service Request Packet
         Packet serviceReq;
         serviceReq.addByte(SSH_MSG_SERVICE_REQUEST);
@@ -355,6 +378,7 @@ int SSHClient::AuthenticateUser(std::string& username, std::string& password) {
            return 0;
         }
 
+        LOG("Service request accepted by server\n");
         authPhase = true;
         delete recvPacket;
     }
@@ -367,7 +391,9 @@ int SSHClient::AuthenticateUser(std::string& username, std::string& password) {
     authReq.addString("password");
     authReq.addBool(false);
     authReq.addString(password);
-
+    
+    LOG("Sending SSH_MSG_USERAUTH_REQUEST with username: " << username <<
+        std::endl);
     sendPacket(&authReq);
 
     recvPacket = receivePacket();
@@ -381,8 +407,9 @@ int SSHClient::AuthenticateUser(std::string& username, std::string& password) {
         delete recvPacket;
         return -1;
     }
-
     delete recvPacket;
+
+    LOG("User authenticated successfully\n");
 
     // Ignore password change req from server
     recvPacket = receivePacket();
@@ -408,9 +435,10 @@ int SSHClient::StartTerminal() {
     channelReq.addByte(SSH_MSG_CHANNEL_OPEN);
     channelReq.addString("session");
     channelReq.addWord(0); // sender channel id
-    channelReq.addWord(2097152); // 2MB initial window size
-    channelReq.addWord(16384);  // 16384KB max packet size
+    channelReq.addWord(WINDOW_SIZE); // 2MB
+    channelReq.addWord(MAX_PACKET_SIZE); // 32 KB
    
+    LOG("Sending SSH_MSG_CHANNEL_OPEN request\n");
     sendPacket(&channelReq);
 
     // Server reply
@@ -422,11 +450,14 @@ int SSHClient::StartTerminal() {
     }
     delete recvPacket;
 
+    LOG("Channel open confirmed\n");
+
     // Get win size
     if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) == -1) {
         std::cerr << "Failed to get window size" << std::endl;
         return 0;
     }
+    LOG("Window size: cols=" << w.ws_col << ", rows=" << w.ws_row << std::endl);
 
     // Request Pseudo Terminal
     Packet terminalReq;
@@ -441,6 +472,7 @@ int SSHClient::StartTerminal() {
     terminalReq.addWord(0); // height
     terminalReq.addString("\x00"); // No terminal modes
 
+    LOG("Sending pseudo terminal request\n");
     sendPacket(&terminalReq);
 
     // Wait until success message
@@ -450,6 +482,7 @@ int SSHClient::StartTerminal() {
         msgCode = recvPacket->getMessageCode();
         delete recvPacket;
     } while(msgCode != SSH_MSG_CHANNEL_SUCCESS);
+    LOG("Pseudo terminal request successful\n");
 
     // Request Shell
     Packet shellReq;
@@ -458,6 +491,7 @@ int SSHClient::StartTerminal() {
     shellReq.addString("shell");
     shellReq.addBool(true);
 
+    LOG("Sending shell request\n");
     sendPacket(&shellReq);
 
     // Wait until success message
@@ -467,6 +501,7 @@ int SSHClient::StartTerminal() {
         msgCode = recvPacket->getMessageCode();
         delete recvPacket;
     } while(msgCode != SSH_MSG_CHANNEL_SUCCESS);
+    LOG("Shell request successful\n");
 
     // Set socket to non blocking
     sockFlags = fcntl(sockFD, F_GETFL, 0);
@@ -573,6 +608,8 @@ Packet* SSHClient::build_kexinit() {
 void SSHClient::resolve_crypto(std::string& kex, std::string& server_key, 
     std::string& encryption, std::string& mac, std::string& compression) {
     
+    (void)compression; // Unused for now
+
     // Resolve key exhange algorithms
     if (kex == "curve25519-sha256") {
         DHKeyGen = generateX25519KeyPair;
@@ -587,6 +624,7 @@ void SSHClient::resolve_crypto(std::string& kex, std::string& server_key,
     else {
         throw std::runtime_error("SSHClient::resolve_crypto() = Invalid KEX algorithm");
     }
+    LOG("Chosen key exchange algorithm: " << kex << std::endl);
 
     // Resolve server host key algorithms
     if (server_key == "ssh-ed25519") {
@@ -600,6 +638,7 @@ void SSHClient::resolve_crypto(std::string& kex, std::string& server_key,
     else {
         throw std::runtime_error("SSHClient::resolve_crypto() = Invalid Server Host algorithm");
     }
+    LOG("Chosen server host key algorithm: " << server_key << std::endl;);
 
     // Resolve encryption algorithms
     if (encryption == "aes128-ctr") {
@@ -619,6 +658,7 @@ void SSHClient::resolve_crypto(std::string& kex, std::string& server_key,
     else {
         throw std::runtime_error("SSHClient::resolve_crypto() = Invalid encryption algorithm");
     }
+    LOG("Chosen encryption algorithm: " << encryption << std::endl);
 
     
     // Resolve MAC algorithms
@@ -633,6 +673,10 @@ void SSHClient::resolve_crypto(std::string& kex, std::string& server_key,
     else {
         throw std::runtime_error("SSHClient::resolve_crypto() = Invalid MAC algorithm");
     }
+ 
+    LOG("Chosen MAC algorithm: " << mac << std::endl);
+
+    LOG("Chosen compression algorithm: " << compression << std::endl);
 
 }
 
@@ -788,6 +832,7 @@ SSHClient::~SSHClient(){
     // Close socket
     if (sockFD > 0) {
         close(sockFD);
+        LOG("Closed TCP connection\n");
     }
 
     // Delete KEXINIT Payloads
