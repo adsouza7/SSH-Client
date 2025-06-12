@@ -19,9 +19,12 @@ A fully custom SSH client developed from scratch in C++20, implementing all aspe
 ### Key Exchange (KEX)
 - ```curve25519-sha256```
 - ```diffie-hellman-group14-sha256```
-### Encryption (Ciphers)
+### Public Key Algorithms
 - ```ssh-ed25519```
 - ```rsa-sha2-256```
+### Encryption
+- ```aes128-ctr```
+- ```aes256-ctr```
 ### Message Authentication Code (MAC)
 - ```hmac-sha2-256```
 - ```hmac-sha1```
