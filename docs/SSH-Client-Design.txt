@@ -39,6 +39,9 @@ CLASSES:
     - connect()
         Attempts connection to server
 
+    - authenticateUser()
+        Authenticates the user with a provided username and password
+
     - startTerminal()
         Opens a terminal session with the connected server
 
@@ -51,11 +54,23 @@ CLASSES:
     - disconnect()
         Terminates connection and frees and resources
 
-2) SSHPacket
-    - SSHPacket(byteStream)
+2) Packet
+    - Packet(byteStream)
         Constructs a packet from a byte stream
-    - SSHPacket(payload)
-        Construct a packet from a payload
+    - addByte(byte)
+        Appends an 8-bit value to the packet buffer
+    - addWord(word)
+        Appends an 32-bit value to the packet buffer
+    - addMPInt(byteArr)
+        Appends a multi precision integer to the packet buffer
+    - addRawString(string)
+        Appends a raw string to the packet buffer
+    - addString(string)
+        Appends an SSH string (with len prefix) to the packet buffer
+    - addBool(bool)
+        Appends a boolean value to the packet buffer
+    - getMessageCode()
+        Returns the SSH message code of the packet
     - serialize()
-        Converts a packet into a byte array
+        Converts a packet into a byte array (with padding and length appended)
  
