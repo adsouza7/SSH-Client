@@ -1,5 +1,5 @@
 # Custom Multithreaded SSH Client
-A fully custom SSH client developed from scratch in C++20, implementing all aspects of the SSH protocol from the ground up using raw sockets, cryptographic primitives, POSIX threads, and raw terminal I/O.
+A fully custom SSH client developed from scratch in C++, implementing all aspects of the SSH protocol from the ground up using raw sockets, cryptographic primitives, POSIX threads, and raw terminal I/O.
 
 ## Features
 - Implements core SSH protocol (RFC 4253)
