@@ -52,6 +52,11 @@ Check out [SSH-Client-Design.txt](docs/SSH-Client-Design.txt) for an overview of
 - OpenSSL 3.0 (libcrypto)
 - POSIX threads (libpthread)
 
+### Install Dependencies
+```bash
+sudo apt install -y build-essential libssl-dev
+```
+
 ### Build
 ```bash
 # Clone the repository
