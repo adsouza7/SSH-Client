@@ -5,7 +5,7 @@
 #include <openssl/params.h>
 #include <vector>
 #include <iostream>
-
+#include <algorithm>
 
 EVP_PKEY* generateDHGroup14KeyPair() {
 

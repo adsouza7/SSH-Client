@@ -6,7 +6,7 @@
 #include <string>
 #include <iostream>
 #include <arpa/inet.h>
-
+#include <algorithm>
 
 EVP_PKEY* RSABytes2PubKey(std::vector<uint8_t>& keyBytes) {
     
